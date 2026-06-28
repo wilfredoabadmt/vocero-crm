@@ -5,10 +5,10 @@ COPY package.json package-lock.json ./
 COPY web/package.json ./web/
 COPY server/package.json ./server/
 COPY e2e/package.json ./e2e/
-RUN npm ci
+RUN npm ci --workspaces --include-workspace-root
 COPY tsconfig.base.json ./
 COPY web ./web
-RUN cd /app/web && /app/node_modules/.bin/tsc -p tsconfig.json --noEmit && /app/node_modules/.bin/vite build
+RUN ls /app/node_modules/.bin/tsc && cd /app/web && /app/node_modules/.bin/tsc -p tsconfig.json --noEmit && /app/node_modules/.bin/vite build
 
 # ---- Stage 2: build server ----
 FROM node:22-alpine AS server-build
@@ -17,7 +17,7 @@ COPY package.json package-lock.json ./
 COPY web/package.json ./web/
 COPY server/package.json ./server/
 COPY e2e/package.json ./e2e/
-RUN npm ci
+RUN npm ci --workspaces --include-workspace-root
 COPY tsconfig.base.json ./
 COPY server ./server
 RUN npm run build -w server
