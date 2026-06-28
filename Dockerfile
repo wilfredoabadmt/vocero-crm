@@ -5,7 +5,7 @@ COPY package.json package-lock.json ./
 COPY web/package.json ./web/
 COPY server/package.json ./server/
 COPY e2e/package.json ./e2e/
-RUN npm ci --workspace web --include-workspace-root
+RUN npm ci
 COPY tsconfig.base.json ./
 COPY web ./web
 RUN cd /app/web && /app/node_modules/.bin/tsc -p tsconfig.json --noEmit && /app/node_modules/.bin/vite build
@@ -17,7 +17,7 @@ COPY package.json package-lock.json ./
 COPY web/package.json ./web/
 COPY server/package.json ./server/
 COPY e2e/package.json ./e2e/
-RUN npm ci --workspace server --include-workspace-root
+RUN npm ci
 COPY tsconfig.base.json ./
 COPY server ./server
 RUN npm run build -w server
