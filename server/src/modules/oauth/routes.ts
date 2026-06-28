@@ -1,11 +1,11 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { config } from '../config.js';
-import { db } from '../db/client.js';
-import { users, oauthConnections } from '../db/schema.js';
+import { config } from '../../config.js';
+import { db } from '../../db/client.js';
+import { users, oauthConnections } from '../../db/schema.js';
 import { eq, and } from 'drizzle-orm';
-import { createSession } from './service.js';
-import { badRequest, unauthorized } from '../lib/errors.js';
+import { createSession } from '../../auth/service.js';
+import { badRequest, unauthorized } from '../../lib/errors.js';
 
 const cookieOpts = {
   path: '/',
@@ -251,7 +251,7 @@ export function oauthRoutes(app: FastifyInstance) {
 
   // Get OAuth connections for current user
   app.get('/api/oauth/connections', { preHandler: async (request) => {
-    const { loadUser } = await import('./guards.js');
+    const { loadUser } = await import('../../auth/guards.js');
     await loadUser(request);
   }}, async (request, reply) => {
     if (!request.currentUser) {
@@ -264,7 +264,7 @@ export function oauthRoutes(app: FastifyInstance) {
     );
 
     return {
-      connections: connections.map(c => ({
+      connections: connections.map((c: any) => ({
         id: c.id,
         provider: c.provider,
         providerUserId: c.providerUserId,
