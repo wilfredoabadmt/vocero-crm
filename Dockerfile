@@ -8,7 +8,7 @@ COPY e2e/package.json e2e/
 RUN npm ci --workspaces --include-workspace-root --include=dev
 COPY tsconfig.base.json ./
 COPY web ./web
-RUN cd web && tsc -p tsconfig.json --noEmit && vite build
+RUN cd web && npx tsc -p tsconfig.json --noEmit && npx vite build
 
 # ---- Stage 2: build server ----
 FROM node:22-alpine AS server-build
