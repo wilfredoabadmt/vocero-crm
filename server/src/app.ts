@@ -39,6 +39,7 @@ import { taskRoutes } from './modules/tasks/routes.js';
 import { alertRoutes } from './modules/alerts/routes.js';
 import { exportRoutes } from './modules/exports/routes.js';
 import { landingPageRoutes } from './modules/landing-pages/routes.js';
+import { oauthRoutes } from './modules/oauth/routes.js';
 import { detectAndScheduleAppointment } from './integrations/calendar.js';
 import { onEvent } from './lib/events.js';
 
@@ -126,6 +127,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   alertRoutes(app);
   exportRoutes(app);
   landingPageRoutes(app);
+  oauthRoutes(app);
 
   // Frontend compilado (producción): web/dist servido por el mismo proceso
   const webDist = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../web/dist');

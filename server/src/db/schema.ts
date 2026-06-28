@@ -68,6 +68,18 @@ export const sessions = pgTable('sessions', {
   createdAt: createdAt(),
 });
 
+export const oauthConnections = pgTable('oauth_connections', {
+  id: id(),
+  userId: bigint('user_id', { mode: 'number' }).notNull().references(() => users.id, { onDelete: 'cascade' }),
+  provider: text('provider').notNull(), // 'facebook', 'google', etc.
+  providerUserId: text('provider_user_id').notNull(),
+  accessToken: text('access_token'),
+  tokenExpiry: timestamp('token_expiry', { withTimezone: true }),
+  profileData: jsonb('profile_data').$type<Record<string, unknown>>(),
+  createdAt: createdAt(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
 export const inboxes = pgTable('inboxes', {
   id: id(),
   name: text('name').notNull(),
