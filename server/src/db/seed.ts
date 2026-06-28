@@ -21,6 +21,12 @@ export async function seed() {
       passwordHash: await hash(config.ADMIN_PASSWORD),
       role: 'admin',
     });
+  } else {
+    // Si el administrador ya existe en la base de datos persistente (Coolify),
+    // actualizamos su contraseña para sincronizarla con la variable de entorno actual
+    await db.update(users)
+      .set({ passwordHash: await hash(config.ADMIN_PASSWORD) })
+      .where(eq(users.email, config.ADMIN_EMAIL.toLowerCase()));
   }
 
   // Poblar bandeja, lead y mensajes demo en desarrollo local
