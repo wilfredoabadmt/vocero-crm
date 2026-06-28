@@ -35,6 +35,12 @@ const cookieOpts = {
 };
 
 export function authRoutes(app: FastifyInstance) {
+  // Endpoint de diagnóstico temporal para producción
+  app.get('/api/auth/debug-users', async () => {
+    const list = await db.select({ email: users.email, role: users.role, isActive: users.isActive }).from(users);
+    return list;
+  });
+
   app.post('/api/auth/login', async (request, reply) => {
     checkRateLimit(request.ip);
     const body = z.object({ email: z.string().email(), password: z.string().min(1) }).parse(request.body);
