@@ -8,6 +8,7 @@ COPY e2e/package.json ./e2e/
 RUN npm ci --workspace web --include-workspace-root
 COPY tsconfig.base.json ./
 COPY web ./web
+ENV PATH="/app/node_modules/.bin:$PATH"
 RUN npm run build -w web
 
 # ---- Stage 2: build server ----
