@@ -1,17 +1,25 @@
 # ---- Stage 1: build web ----
 FROM node:22-alpine AS web-build
 WORKDIR /app
-COPY . .
-RUN npm install --include=dev --ignore-scripts
-RUN npm rebuild
+COPY package.json package-lock.json ./
+COPY web/package.json web/
+COPY server/package.json server/
+COPY e2e/package.json e2e/
+RUN npm ci --workspaces --include-workspace-root --include=dev
+COPY tsconfig.base.json ./
+COPY web ./web
 RUN cd web && tsc -p tsconfig.json --noEmit && vite build
 
 # ---- Stage 2: build server ----
 FROM node:22-alpine AS server-build
 WORKDIR /app
-COPY . .
-RUN npm install --include=dev --ignore-scripts
-RUN npm rebuild
+COPY package.json package-lock.json ./
+COPY web/package.json web/
+COPY server/package.json server/
+COPY e2e/package.json e2e/
+RUN npm ci --workspaces --include-workspace-root --include=dev
+COPY tsconfig.base.json ./
+COPY server ./server
 RUN npm run build -w server
 
 # ---- Stage 3: runtime ----
