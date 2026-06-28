@@ -2,14 +2,16 @@
 FROM node:22-alpine AS web-build
 WORKDIR /app
 COPY . .
-RUN npm install --include=dev
+RUN npm install --include=dev --ignore-scripts
+RUN npm rebuild
 RUN cd web && tsc -p tsconfig.json --noEmit && vite build
 
 # ---- Stage 2: build server ----
 FROM node:22-alpine AS server-build
 WORKDIR /app
 COPY . .
-RUN npm install --include=dev
+RUN npm install --include=dev --ignore-scripts
+RUN npm rebuild
 RUN npm run build -w server
 
 # ---- Stage 3: runtime ----
