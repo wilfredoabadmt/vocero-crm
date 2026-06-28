@@ -1,0 +1,15 @@
+node_modules
+**/node_modules
+**/dist
+**/.e2e-data
+**/data
+.git
+.github
+.playwright-mcp
+e2e/test-results
+e2e/playwright-report
+specs
+*.md
+.env
+.env.*
+!/.env.example

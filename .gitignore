@@ -1,0 +1,31 @@
+# Secrets / entorno
+.env
+.env.local
+.env.*.local
+.mcp.json
+
+# Dependencias y builds
+node_modules/
+dist/
+build/
+*.tsbuildinfo
+
+# Datos locales (solo en la raíz, no el código fuente de módulos)
+/data/
+/uploads/
+server/data/
+*.log
+
+# Pruebas
+coverage/
+playwright-report/
+test-results/
+e2e/.auth/
+.playwright-mcp/
+inbox-logged-in.png
+
+# SO / editor
+.DS_Store
+Thumbs.db
+
+prod-*.png

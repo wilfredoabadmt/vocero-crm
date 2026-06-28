@@ -1,0 +1,5 @@
+﻿.auth/
+.e2e-data/
+test-results/
+playwright-report/
+node_modules/

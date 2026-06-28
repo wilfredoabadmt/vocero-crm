@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "skills": {
+    "seedance-animation": {
+      "source": "kevinrivm/seedance-animation",
+      "sourceType": "github",
+      "version": "1.0.0"
+    }
+  }
+}

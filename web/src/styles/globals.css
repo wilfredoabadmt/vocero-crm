@@ -1,0 +1,78 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 210 30% 98%;
+    --foreground: 222 47% 11%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    --muted: 210 25% 94%;
+    --muted-foreground: 215 16% 45%;
+    --border: 214 25% 88%;
+    --input: 214 25% 88%;
+    --primary: 222 47% 18%;
+    --primary-foreground: 210 30% 98%;
+    --accent: 160 84% 30%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 72% 45%;
+    --destructive-foreground: 0 0% 100%;
+    --success: 160 84% 32%;
+    --warning: 35 92% 44%;
+    --ring: 222 47% 40%;
+    --bubble-out: 142 48% 91%;
+    --bubble-in: 0 0% 100%;
+  }
+
+  .dark {
+    --background: 222 35% 8%;
+    --foreground: 210 25% 92%;
+    --card: 222 30% 11%;
+    --card-foreground: 210 25% 92%;
+    --muted: 221 25% 16%;
+    --muted-foreground: 215 15% 60%;
+    --border: 220 20% 21%;
+    --input: 220 20% 24%;
+    --primary: 210 25% 92%;
+    --primary-foreground: 222 40% 12%;
+    --accent: 160 70% 38%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 65% 52%;
+    --destructive-foreground: 0 0% 100%;
+    --success: 160 70% 42%;
+    --warning: 35 90% 55%;
+    --ring: 210 25% 70%;
+    --bubble-out: 158 30% 18%;
+    --bubble-in: 222 25% 15%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-feature-settings: 'cv02', 'cv03';
+  }
+
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply rounded-full bg-muted-foreground/25;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-muted-foreground/40;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}
