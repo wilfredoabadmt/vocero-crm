@@ -11,7 +11,11 @@ import {
   ArrowRight,
   Sparkles,
   Info,
-  CheckCircle2
+  CheckCircle2,
+  BarChart3,
+  LayoutTemplate,
+  Bell,
+  Settings
 } from 'lucide-react';
 
 interface ManualSection {
@@ -32,38 +36,8 @@ interface ManualSection {
 
 const SECTIONS: ManualSection[] = [
   {
-    id: 'ia',
-    title: 'Agente de IA (Educar Bot)',
-    icon: Bot,
-    description: 'Aprende a instruir y dotar de conocimiento a tu bot de Inteligencia Artificial para que responda de forma autónoma a las consultas de tus clientes por WhatsApp.',
-    steps: [
-      {
-        title: 'Definir el Prompt (Comportamiento)',
-        desc: 'Escribe las instrucciones de personalidad del bot en el campo de texto. Indica cómo debe saludar, en qué tono hablar (formal/amigable) y cuál es su objetivo.',
-        example: '"Eres un asesor comercial para una inmobiliaria. Sé muy amable y responde de forma breve. Tu objetivo es obtener el correo del cliente para enviarle el catálogo de propiedades."'
-      },
-      {
-        title: 'Cargar la Base de Conocimiento (PDF/TXT)',
-        desc: 'Sube tus documentos corporativos (catálogos de precios, políticas de garantía, preguntas frecuentes). El sistema segmenta el texto e indexa la información para búsquedas instantáneas.',
-        example: 'Subir el archivo "Precios_Y_Servicios_2026.pdf" para que la IA responda con precisión sobre costos y promociones sin equivocarse.'
-      },
-      {
-        title: 'Validar y Testear el Chat',
-        desc: 'Una vez cargados los documentos, la IA buscará semánticamente en ellos cada vez que un cliente escriba al canal de WhatsApp conectado.',
-      }
-    ],
-    mockup: {
-      title: 'Pantalla: Entrenar IA',
-      elements: [
-        'Caja de Instrucciones del Bot (Prompt)',
-        'Zona de Arrastre de Archivos (Arrastra tus archivos aquí)',
-        'Lista de Documentos Cargados (Garantia.pdf - Procesado con éxito)',
-      ]
-    }
-  },
-  {
     id: 'inbox',
-    title: 'Bandeja de entrada (Inbox)',
+    title: 'Bandeja de entrada',
     icon: Inbox,
     description: 'El centro operativo para tus agentes. Aquí se gestionan todos los chats de clientes de WhatsApp en tiempo real.',
     steps: [
@@ -121,19 +95,77 @@ const SECTIONS: ManualSection[] = [
     }
   },
   {
+    id: 'dashboard',
+    title: 'Dashboard (Analíticas)',
+    icon: BarChart3,
+    description: 'Monitorea las métricas críticas de tu negocio, el volumen de chats y el rendimiento comercial de tus asesores en tiempo real.',
+    steps: [
+      {
+        title: 'KPIs Principales',
+        desc: 'Visualiza rápidamente el número de leads totales, prospectos nuevos creados en el día y el total de ventas cerradas de forma exitosa.',
+      },
+      {
+        title: 'Auditoría de Conversaciones',
+        desc: 'Analiza el flujo de mensajes recibidos y enviados, diferenciando cuántos fueron respondidos por los bots de IA de forma automática y cuántos requirieron intervención humana.',
+        example: 'Monitorear si el 80% de tus chats de primer contacto están siendo resueltos con éxito por la IA.'
+      },
+      {
+        title: 'Rendimiento de Asesores',
+        desc: 'Revisa los tiempos promedio de respuesta y la carga de chats por cada agente comercial de tu equipo para balancear el trabajo.',
+      }
+    ],
+    mockup: {
+      title: 'Pantalla: Dashboard',
+      elements: [
+        'Indicadores de Rendimiento (Leads totales, Nuevos Leads, Leads Ganados)',
+        'Gráfico de Mensajes Diarios (IA vs Asesor Humano)',
+        'Tabla de Desempeño (Tiempo promedio de respuesta por agente)',
+      ]
+    }
+  },
+  {
+    id: 'templates',
+    title: 'Plantillas de Mensajes',
+    icon: LayoutTemplate,
+    description: 'Administra y sincroniza las plantillas oficiales pre-aprobadas por Meta para iniciar conversaciones con tus clientes de forma segura.',
+    steps: [
+      {
+        title: 'Creación de Estructura de Mensaje',
+        desc: 'Escribe el texto de la plantilla utilizando variables como {{1}} o {{2}} para personalizar datos (nombre, fechas, productos) dinámicamente.',
+        example: '"Hola {{1}}, confirmamos tu cita para el día {{2}}. ¡Te esperamos!"'
+      },
+      {
+        title: 'Sincronización y Aprobación',
+        desc: 'Envía las plantillas a revisión de Meta. Una vez aprobadas, se marcarán con estado "approved" y estarán disponibles para envíos.',
+      },
+      {
+        title: 'Categorización de Mensajes',
+        desc: 'Agrupa tus plantillas en categorías oficiales de Meta (Marketing, Utilidad o Autenticación) de acuerdo al tipo de comunicación.',
+      }
+    ],
+    mockup: {
+      title: 'Pantalla: Plantillas de Mensajes',
+      elements: [
+        'Lista de Plantillas Oficiales (Borrador, Aprobado, Rechazado)',
+        'Detalle del Cuerpo del Mensaje (Texto de plantilla + Variables)',
+        'Botón "Sincronizar con Meta" (Importación de la API Cloud)',
+      ]
+    }
+  },
+  {
     id: 'broadcast',
     title: 'Campañas Masivas (Broadcast)',
     icon: Megaphone,
-    description: 'Módulo para enviar notificaciones masivas de WhatsApp a tu base de datos segmentada.',
+    description: 'Envía notificaciones masivas y promociones de WhatsApp a tu base de contactos segmentada de forma segura.',
     steps: [
       {
         title: 'Filtrar la Audiencia de Destino',
-        desc: 'Selecciona qué contactos recibirán el mensaje mediante filtros avanzados. Puedes filtrar por etapa de ventas, etiquetas específicas o puntuación de lead.',
+        desc: 'Selecciona los contactos mediante filtros por etapas comerciales, etiquetas específicas o puntuación de lead (Lead Scoring).',
         example: 'Enviar campaña de promoción sólo a los contactos con la etiqueta "Interesado" y que estén en la etapa comercial "Prospecto".'
       },
       {
         title: 'Seleccionar Plantilla Oficial de WhatsApp',
-        desc: 'Elige la plantilla de WhatsApp pre-aprobada que vas a enviar. Las plantillas te garantizan un envío seguro libre de bloqueos/spam por parte de Meta.',
+        desc: 'Elige la plantilla de WhatsApp pre-aprobada que vas a enviar para evitar bloqueos por parte de Meta.',
       },
       {
         title: 'Programar o Enviar Inmediatamente',
@@ -146,6 +178,64 @@ const SECTIONS: ManualSection[] = [
         'Selector de Filtros (Filtra por Etapa, Tags y Puntuación)',
         'Cuerpo de Mensaje (Vista previa de la plantilla oficial a enviar)',
         'Estadísticas de Entrega (Enviados, Entregados, Leídos y Respondidos)',
+      ]
+    }
+  },
+  {
+    id: 'tasks',
+    title: 'Tareas (Agenda Comercial)',
+    icon: CheckSquare,
+    description: 'Planifica y gestiona las actividades pendientes de tu equipo de ventas para que ningún prospecto se quede sin seguimiento.',
+    steps: [
+      {
+        title: 'Crear Compromiso Comercial',
+        desc: 'Registra una nueva actividad (ej: Llamada telefónica, Envío de propuesta, Reunión de demostración) vinculándola a un contacto específico.',
+      },
+      {
+        title: 'Definir Plazos y Responsables',
+        desc: 'Determina qué agente de ventas debe cumplir la tarea y asigna una fecha y hora límite estricta de vencimiento.',
+        example: 'Crear tarea "Llamar para cerrar contrato" asignada a la asesora Sofía con vencimiento para el viernes a las 10:00 AM.'
+      },
+      {
+        title: 'Seguimiento de Estado',
+        desc: 'Organiza tu flujo de trabajo visualizando las tareas del día y márcalas como "Completadas" a medida que las completes.',
+      }
+    ],
+    mockup: {
+      title: 'Pantalla: Tareas de Asesores',
+      elements: [
+        'Lista de Tareas (Filtros: Pendientes, Vencidas, Completadas)',
+        'Indicadores de Nivel de Prioridad (Urgente - Rojo, Media - Amarillo, Baja - Gris)',
+        'Formulario de Creación (Título, Plazo, Asignación, Lead Asociado)',
+      ]
+    }
+  },
+  {
+    id: 'alerts',
+    title: 'Alertas (Leads en Peligro)',
+    icon: Bell,
+    description: 'Recibe alertas automáticas en tiempo real sobre prospectos abandonados o lentitud de respuesta por parte de tu equipo.',
+    steps: [
+      {
+        title: 'Criterios de Alerta Automática',
+        desc: 'El sistema evalúa de forma continua el tiempo transcurrido desde el último mensaje o cambio de etapa comercial.',
+        example: '"Alerta: Lead Juan Pérez lleva más de 48 horas sin respuesta en la etapa de Negociación."'
+      },
+      {
+        title: 'Notificación de Incidencias',
+        desc: 'Cuando se cumple una regla de abandono, el CRM emite una notificación sonora y visual al panel del supervisor.',
+      },
+      {
+        title: 'Acción Correctiva Rápida',
+        desc: 'Haz clic directo en la alerta para abrir el chat del cliente y reasignarlo a otro agente o contestarle en el acto.',
+      }
+    ],
+    mockup: {
+      title: 'Pantalla: Monitor de Alertas',
+      elements: [
+        'Lista de Alertas Activas (Gravedad, Tiempo de espera superado)',
+        'Descripción del Incidente (ej. "Lead frío hace 3 días")',
+        'Botonera de Acción Rápida (Resolver Alerta / Ver Conversación)',
       ]
     }
   },
@@ -180,6 +270,36 @@ const SECTIONS: ManualSection[] = [
     }
   },
   {
+    id: 'ia',
+    title: 'Entrenar IA (Agente de IA)',
+    icon: Bot,
+    description: 'Aprende a instruir y dotar de conocimiento a tu bot de Inteligencia Artificial para que responda de forma autónoma a las consultas de tus clientes por WhatsApp.',
+    steps: [
+      {
+        title: 'Definir el Prompt (Comportamiento)',
+        desc: 'Escribe las instrucciones de personalidad del bot en el campo de texto. Indica cómo debe saludar, en qué tono hablar (formal/amigable) y cuál es su objetivo.',
+        example: '"Eres un asesor comercial para una inmobiliaria. Sé muy amable y responde de forma breve. Tu objetivo es obtener el correo del cliente para enviarle el catálogo de propiedades."'
+      },
+      {
+        title: 'Cargar la Base de Conocimiento (PDF/TXT)',
+        desc: 'Sube tus documentos corporativos (catálogos de precios, políticas de garantía, preguntas frecuentes). El sistema segmenta el texto e indexa la información para búsquedas instantáneas.',
+        example: 'Subir el archivo "Precios_Y_Servicios_2026.pdf" para que la IA responda con precisión sobre costos y promociones sin equivocarse.'
+      },
+      {
+        title: 'Validar y Testear el Chat',
+        desc: 'Una vez cargados los documentos, la IA buscará semánticamente en ellos cada vez que un cliente escriba al canal de WhatsApp conectado.',
+      }
+    ],
+    mockup: {
+      title: 'Pantalla: Entrenar IA',
+      elements: [
+        'Caja de Instrucciones del Bot (Prompt)',
+        'Zona de Arrastre de Archivos (Arrastra tus archivos aquí)',
+        'Lista de Documentos Cargados (Garantia.pdf - Procesado con éxito)',
+      ]
+    }
+  },
+  {
     id: 'workflows',
     title: 'Automatizaciones (Workflows)',
     icon: Zap,
@@ -206,6 +326,35 @@ const SECTIONS: ManualSection[] = [
         'Disparador del Flujo (ej. Lead cambia de Etapa)',
         'Acción 1: Enviar plantilla oficial de WhatsApp',
         'Acción 2: Crear Tarea de Seguimiento de forma automática',
+      ]
+    }
+  },
+  {
+    id: 'settings',
+    title: 'Configuración (Ajustes)',
+    icon: Settings,
+    description: 'Controla y personaliza las reglas, canales de WhatsApp y la imagen corporativa de tu CRM de forma centralizada.',
+    steps: [
+      {
+        title: 'Conexión de Canales (WhatsApp API)',
+        desc: 'Configura la conexión oficial con Meta ingresando el token de acceso permanente, ID de número de teléfono y WABA ID del negocio.',
+      },
+      {
+        title: 'Reglas de Asignación de Agentes',
+        desc: 'Selecciona cómo se distribuirán los nuevos leads entre tus asesores (Round Robin, Menos Cargado, Asignación Directa) para un reparto justo.',
+        example: 'Activar Round Robin con pesos para priorizar a los vendedores con mayor porcentaje de cierre.'
+      },
+      {
+        title: 'Personalización de Marca Blanca (Aislada)',
+        desc: 'Cambia el nombre comercial, color de acento hexadecimal e imagen de logotipo para reflejar la identidad visual de tu propia empresa.',
+      }
+    ],
+    mockup: {
+      title: 'Pantalla: Ajustes de Configuración',
+      elements: [
+        'Secciones del menú lateral de Ajustes (Bandejas, Usuarios, Asignación, Marca Blanca, n8n)',
+        'Formulario de Marca Blanca (Nombre, Color Picker, Zona de Logo)',
+        'Configuración de n8n (Url Iframe para automatizaciones de flujos)',
       ]
     }
   }
