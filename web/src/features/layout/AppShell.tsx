@@ -134,7 +134,13 @@ export function AppShell({ user, children }: { user: User; children: ReactNode }
         { href: '/', icon: BarChart3, label: 'Inicio' },
         { href: '/inbox', icon: Inbox, label: 'Bandeja de entrada' },
         { href: '/kanban', icon: Kanban, label: 'Embudo' },
+        { href: '/dashboard', icon: BarChart3, label: 'Dashboard' },
+        { href: '/plantillas', icon: LayoutTemplate, label: 'Plantillas' },
+        { href: '/campanas', icon: Megaphone, label: 'Campañas' },
         { href: '/tareas', icon: CheckSquare, label: 'Tareas' },
+        { href: '/alertas', icon: Bell, label: 'Alertas' },
+        { href: '/landing-pages', icon: Globe, label: 'Landing Pages' },
+        { href: '/agentes', icon: GraduationCap, label: 'Entrenar IA' },
         { href: '/manual', icon: BookOpen, label: 'Manual de Uso' },
       ]
     : NAV;
@@ -163,7 +169,7 @@ export function AppShell({ user, children }: { user: User; children: ReactNode }
           {navItems.map(({ href, icon, label }) => (
             <SidebarItem key={href} href={href} icon={icon} label={label} />
           ))}
-          {!user.is_trial && user.role === 'admin' && (
+          {user.role === 'admin' && (
             <SidebarItem href="/ajustes" icon={Settings} label="Configuración" />
           )}
 

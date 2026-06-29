@@ -1,5 +1,5 @@
 import { hash } from '@node-rs/argon2';
-import { desc, eq } from 'drizzle-orm';
+import { desc, eq, or } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { requireAdmin, requireAuthUser } from '../../auth/guards.js';
@@ -20,12 +20,29 @@ function serializeUser(u: typeof users.$inferSelect) {
 }
 
 export function userRoutes(app: FastifyInstance) {
-  app.get('/api/users', { preHandler: requireAdmin }, async () => {
-    const rows = await db.select().from(users).orderBy(desc(users.id));
+  app.get('/api/users', { preHandler: requireAdmin }, async (request) => {
+    const me = requireAuthUser(request);
+    
+    let rows;
+    if (me.is_trial) {
+      rows = await db
+        .select()
+        .from(users)
+        .where(
+          or(
+            eq(users.id, me.id),
+            eq(users.createdBy, me.id)
+          )
+        )
+        .orderBy(desc(users.id));
+    } else {
+      rows = await db.select().from(users).orderBy(desc(users.id));
+    }
     return { items: rows.map(serializeUser) };
   });
 
   app.post('/api/users', { preHandler: requireAdmin }, async (request, reply) => {
+    const me = requireAuthUser(request);
     const body = z
       .object({
         name: z.string().min(1).max(100),
@@ -43,6 +60,7 @@ export function userRoutes(app: FastifyInstance) {
         email: body.email.toLowerCase(),
         passwordHash: await hash(body.password),
         role: body.role,
+        createdBy: me.id,
       })
       .returning();
     reply.code(201);

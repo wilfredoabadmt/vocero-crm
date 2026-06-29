@@ -1,5 +1,6 @@
 import { sql } from 'drizzle-orm';
 import {
+  AnyPgColumn,
   bigint,
   boolean,
   customType,
@@ -57,6 +58,7 @@ export const users = pgTable('users', {
   theme: userTheme('theme').notNull().default('system'),
   isTrial: boolean('is_trial').notNull().default(false), // Flag para cuentas temporales
   trialExpiresAt: timestamp('trial_expires_at', { withTimezone: true }), // Vencimiento del trial (5 días)
+  createdBy: bigint('created_by', { mode: 'number' }).references((): AnyPgColumn => users.id, { onDelete: 'set null' }), // Creador del usuario para aislamiento
   createdAt: createdAt(),
 });
 

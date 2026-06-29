@@ -150,7 +150,7 @@ export default function App() {
         <Route path="/inbox">{() => <InboxPage />}</Route>
         <Route path="/c/:id">{(params) => <InboxPage conversationId={Number(params.id)} />}</Route>
         <Route path="/kanban" component={KanbanPage} />
-        <Route path="/dashboard">{() => user.is_trial ? <TrialWelcomePage user={user} /> : <DashboardPage />}</Route>
+        <Route path="/dashboard">{() => <DashboardPage />}</Route>
         <Route path="/plantillas" component={TemplatesPage} />
         <Route path="/campanas" component={BroadcastsPage} />
         <Route path="/tareas" component={TasksPage} />
