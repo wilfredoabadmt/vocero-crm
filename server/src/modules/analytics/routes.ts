@@ -8,7 +8,7 @@ import { analyticsService } from './service.js';
 
 export function analyticsRoutes(app: FastifyInstance) {
   // Dashboard principal (mejorado) - Temporal para diagnóstico
-  app.get('/api/analytics/dashboard', async (request) => {
+  app.get('/api/analytics/dashboard', async (request, reply) => {
     try {
       const q = z
         .object({
@@ -22,6 +22,7 @@ export function analyticsRoutes(app: FastifyInstance) {
 
       return await analyticsService.getDashboard({ from, to });
     } catch (err: any) {
+      reply.code(500);
       return { error_debug: err.message, stack: err.stack };
     }
   });
