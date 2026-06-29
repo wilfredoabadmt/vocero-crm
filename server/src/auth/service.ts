@@ -15,6 +15,7 @@ export type SessionUser = {
   theme: 'light' | 'dark' | 'system';
   is_trial: boolean;
   trial_expired: boolean;
+  trial_expires_at: string | null;
 };
 
 export async function createSession(userId: number): Promise<string> {
@@ -62,6 +63,7 @@ export async function getSessionUser(token: string | undefined): Promise<Session
     theme: row.theme,
     is_trial: row.isTrial,
     trial_expired: trialExpired,
+    trial_expires_at: row.trialExpiresAt ? new Date(row.trialExpiresAt).toISOString() : null,
   };
 }
 

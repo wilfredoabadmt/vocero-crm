@@ -53,7 +53,8 @@ export function authRoutes(app: FastifyInstance) {
         role: user.role, 
         theme: user.theme,
         is_trial: user.isTrial,
-        trial_expired: user.isTrial && user.trialExpiresAt ? new Date(user.trialExpiresAt).getTime() < Date.now() : false
+        trial_expired: user.isTrial && user.trialExpiresAt ? new Date(user.trialExpiresAt).getTime() < Date.now() : false,
+        trial_expires_at: user.trialExpiresAt ? new Date(user.trialExpiresAt).toISOString() : null
       } 
     };
   });
@@ -105,6 +106,7 @@ export function authRoutes(app: FastifyInstance) {
         theme: user.theme,
         is_trial: user.isTrial,
         trial_expired: false,
+        trial_expires_at: user.trialExpiresAt ? new Date(user.trialExpiresAt).toISOString() : null
       },
     };
   });
@@ -143,6 +145,16 @@ export function authRoutes(app: FastifyInstance) {
     }
     if (Object.keys(updates).length > 0) await db.update(users).set(updates).where(eq(users.id, me.id));
     const [updated] = await db.select().from(users).where(eq(users.id, me.id));
-    return { user: { id: updated!.id, email: updated!.email, name: updated!.name, role: updated!.role, theme: updated!.theme } };
+    return { 
+      user: { 
+        id: updated!.id, 
+        email: updated!.email, 
+        name: updated!.name, 
+        role: updated!.role, 
+        theme: updated!.theme,
+        is_trial: updated!.isTrial,
+        trial_expires_at: updated!.trialExpiresAt ? new Date(updated!.trialExpiresAt).toISOString() : null
+      } 
+    };
   });
 }

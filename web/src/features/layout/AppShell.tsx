@@ -82,8 +82,15 @@ export function AppShell({ user, children }: { user: User; children: ReactNode }
     void api.patch('/api/auth/me', { theme: t }).catch(() => {});
   };
 
-  const isActive = (href: string) =>
-    href === '/' ? location === '/' || location.startsWith('/c/') : location.startsWith(href);
+  const isActive = (href: string) => {
+    if (href === '/') {
+      return location === '/';
+    }
+    if (href === '/inbox') {
+      return location === '/inbox' || location.startsWith('/c/');
+    }
+    return location.startsWith(href);
+  };
 
   const SidebarItem = ({ href, icon: Icon, label }: { href: string; icon: any; label: string }) => {
     const active = isActive(href);
@@ -113,6 +120,15 @@ export function AppShell({ user, children }: { user: User; children: ReactNode }
     return <Tooltip label={label}>{content}</Tooltip>;
   };
 
+  const navItems = user.is_trial
+    ? [
+        { href: '/', icon: BarChart3, label: 'Inicio' },
+        { href: '/inbox', icon: Inbox, label: 'Bandeja de entrada' },
+        { href: '/kanban', icon: Kanban, label: 'Embudo' },
+        { href: '/tareas', icon: CheckSquare, label: 'Tareas' },
+      ]
+    : NAV;
+
   return (
     <div className="flex h-full">
       {/* Sidebar colapsable/expandible */}
@@ -132,10 +148,10 @@ export function AppShell({ user, children }: { user: User; children: ReactNode }
         </div>
 
         <nav className="flex flex-1 flex-col gap-1">
-          {NAV.map(({ href, icon, label }) => (
+          {navItems.map(({ href, icon, label }) => (
             <SidebarItem key={href} href={href} icon={icon} label={label} />
           ))}
-          {user.role === 'admin' && (
+          {!user.is_trial && user.role === 'admin' && (
             <SidebarItem href="/ajustes" icon={Settings} label="Configuración" />
           )}
 

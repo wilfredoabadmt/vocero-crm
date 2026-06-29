@@ -6,6 +6,7 @@ export interface User {
   theme: 'light' | 'dark' | 'system';
   is_trial: boolean;
   trial_expired: boolean;
+  trial_expires_at?: string | null;
 }
 
 export interface PanelUser {

@@ -21,6 +21,7 @@ import { LandingPagesPage } from './features/landing-pages/LandingPagesPage';
 import { LandingPageView } from './features/landing-pages/LandingPageView';
 import { OnboardingTour } from './features/onboarding/OnboardingTour';
 import { TrialExpiredOverlay } from './features/onboarding/TrialExpiredOverlay';
+import { TrialWelcomePage } from './features/onboarding/TrialWelcomePage';
 
 export default function App() {
   const queryClient = useQueryClient();
@@ -76,10 +77,11 @@ export default function App() {
       <OnboardingTour user={user} />
       <TrialExpiredOverlay user={user} />
       <Switch>
-        <Route path="/">{() => <InboxPage />}</Route>
+        <Route path="/">{() => user.is_trial ? <TrialWelcomePage user={user} /> : <InboxPage />}</Route>
+        <Route path="/inbox">{() => <InboxPage />}</Route>
         <Route path="/c/:id">{(params) => <InboxPage conversationId={Number(params.id)} />}</Route>
         <Route path="/kanban" component={KanbanPage} />
-        <Route path="/dashboard" component={DashboardPage} />
+        <Route path="/dashboard">{() => user.is_trial ? <TrialWelcomePage user={user} /> : <DashboardPage />}</Route>
         <Route path="/plantillas" component={TemplatesPage} />
         <Route path="/campanas" component={BroadcastsPage} />
         <Route path="/tareas" component={TasksPage} />
