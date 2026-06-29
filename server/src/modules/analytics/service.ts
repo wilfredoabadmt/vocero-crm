@@ -61,7 +61,7 @@ export class AnalyticsService {
         direction,
         count(*)::int as count
       FROM messages
-      WHERE created_at >= ${dateRange.from} AND created_at <= ${dateRange.to}
+      WHERE created_at >= ${dateRange.from}::timestamptz AND created_at <= ${dateRange.to}::timestamptz
       GROUP BY TO_CHAR(created_at, 'YYYY-MM-DD'), direction
       ORDER BY date ASC
     `);
@@ -105,7 +105,7 @@ export class AnalyticsService {
         FROM messages m
       ) t
       WHERE t.current_dir = 'out' AND t.prev_dir = 'in' 
-        AND t.created_at >= ${dateRange.from} AND t.created_at <= ${dateRange.to}
+        AND t.created_at >= ${dateRange.from}::timestamptz AND t.created_at <= ${dateRange.to}::timestamptz
     `);
 
     const rows = Array.isArray(result) ? result : (result as any).rows || [];
@@ -196,7 +196,7 @@ export class AnalyticsService {
           WHERE m.author_user_id = ${userId}
         ) t
         WHERE t.current_dir = 'out' AND t.prev_dir = 'in'
-          AND t.created_at >= ${dateRange.from} AND t.created_at <= ${dateRange.to}
+          AND t.created_at >= ${dateRange.from}::timestamptz AND t.created_at <= ${dateRange.to}::timestamptz
       `).then((r) => {
         const rows = Array.isArray(r) ? r : (r as any).rows || [];
         return Math.round(Number(rows[0]?.avg_seconds || 0));
