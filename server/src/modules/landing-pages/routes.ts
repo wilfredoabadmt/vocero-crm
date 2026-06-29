@@ -148,7 +148,7 @@ export function landingPageRoutes(app: FastifyInstance) {
   // ========== RUTAS PÚBLICAS (sin auth) ==========
 
   // Obtener landing page publicada por slug
-  app.get('/lp/:slug', async (request, reply) => {
+  app.get('/api/lp/:slug', async (request, reply) => {
     const { slug } = z.object({ slug: z.string() }).parse(request.params);
     const page = await landingPageService.getPageBySlug(slug);
     if (!page) {
@@ -159,7 +159,7 @@ export function landingPageRoutes(app: FastifyInstance) {
   });
 
   // Enviar formulario
-  app.post('/lp/:slug/submit', async (request, reply) => {
+  app.post('/api/lp/:slug/submit', async (request, reply) => {
     const { slug } = z.object({ slug: z.string() }).parse(request.params);
     const body = z.object({ data: z.record(z.unknown()) }).parse(request.body);
 

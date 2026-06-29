@@ -22,7 +22,7 @@ export function LandingPageView() {
 
   const { data: page, isLoading, error } = useQuery<LandingPageData>({
     queryKey: ['lp', params.slug],
-    queryFn: () => fetch(`/lp/${params.slug}`).then((r) => {
+    queryFn: () => fetch(`/api/lp/${params.slug}`).then((r) => {
       if (!r.ok) throw new Error('Página no encontrada');
       return r.json();
     }),
@@ -31,7 +31,7 @@ export function LandingPageView() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await fetch(`/lp/${params.slug}/submit`, {
+      const res = await fetch(`/api/lp/${params.slug}/submit`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ data: formData }),
