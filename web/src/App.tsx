@@ -22,6 +22,7 @@ import { LandingPageView } from './features/landing-pages/LandingPageView';
 import { OnboardingTour } from './features/onboarding/OnboardingTour';
 import { TrialExpiredOverlay } from './features/onboarding/TrialExpiredOverlay';
 import { TrialWelcomePage } from './features/onboarding/TrialWelcomePage';
+import { ManualPage } from './features/manual/ManualPage';
 
 export default function App() {
   const queryClient = useQueryClient();
@@ -88,6 +89,7 @@ export default function App() {
         <Route path="/alertas" component={AlertsPage} />
         <Route path="/landing-pages" component={LandingPagesPage} />
         <Route path="/agentes" component={EducateAiPage} />
+        <Route path="/manual" component={ManualPage} />
         <Route path="/ajustes/:section?">{(params) => <SettingsPage section={params.section} user={user} />}</Route>
         <Route>
           <div className="p-10 text-center text-muted-foreground">Página no encontrada</div>

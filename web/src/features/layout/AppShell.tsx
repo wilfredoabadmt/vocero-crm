@@ -18,6 +18,7 @@ import {
   Globe,
   ChevronLeft,
   ChevronRight,
+  BookOpen,
 } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import { Link, useLocation } from 'wouter';
@@ -45,6 +46,7 @@ const NAV = [
   { href: '/alertas', icon: Bell, label: 'Alertas' },
   { href: '/landing-pages', icon: Globe, label: 'Landing Pages' },
   { href: '/agentes', icon: GraduationCap, label: 'Entrenar IA' },
+  { href: '/manual', icon: BookOpen, label: 'Manual de Uso' },
 ];
 
 export function AppShell({ user, children }: { user: User; children: ReactNode }) {
@@ -126,6 +128,7 @@ export function AppShell({ user, children }: { user: User; children: ReactNode }
         { href: '/inbox', icon: Inbox, label: 'Bandeja de entrada' },
         { href: '/kanban', icon: Kanban, label: 'Embudo' },
         { href: '/tareas', icon: CheckSquare, label: 'Tareas' },
+        { href: '/manual', icon: BookOpen, label: 'Manual de Uso' },
       ]
     : NAV;
 
