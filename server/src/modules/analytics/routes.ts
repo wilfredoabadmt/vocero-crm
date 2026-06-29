@@ -7,19 +7,23 @@ import { messages, contacts, stages, users } from '../../db/schema.js';
 import { analyticsService } from './service.js';
 
 export function analyticsRoutes(app: FastifyInstance) {
-  // Dashboard principal (mejorado)
-  app.get('/api/analytics/dashboard', { preHandler: requireAuth }, async (request) => {
-    const q = z
-      .object({
-        from: z.string().datetime().optional(),
-        to: z.string().datetime().optional(),
-      })
-      .parse(request.query);
+  // Dashboard principal (mejorado) - Temporal para diagnóstico
+  app.get('/api/analytics/dashboard', async (request) => {
+    try {
+      const q = z
+        .object({
+          from: z.string().datetime().optional(),
+          to: z.string().datetime().optional(),
+        })
+        .parse(request.query);
 
-    const to = q.to ? new Date(q.to) : new Date();
-    const from = q.from ? new Date(q.from) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+      const to = q.to ? new Date(q.to) : new Date();
+      const from = q.from ? new Date(q.from) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
-    return analyticsService.getDashboard({ from, to });
+      return await analyticsService.getDashboard({ from, to });
+    } catch (err: any) {
+      return { error_debug: err.message, stack: err.stack };
+    }
   });
 
   // Análisis por fuente de leads
