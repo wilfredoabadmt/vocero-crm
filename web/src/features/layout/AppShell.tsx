@@ -1,4 +1,4 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Bot,
   Inbox,
@@ -53,6 +53,13 @@ export function AppShell({ user, children }: { user: User; children: ReactNode }
   const [location] = useLocation();
   const queryClient = useQueryClient();
   const { theme, setTheme } = useTheme();
+
+  // Cargar configuración de marca blanca para logo y nombre
+  const brand = useQuery({
+    queryKey: ['white-label'],
+    queryFn: () => api.get<{ name: string; logo: string; accent_color: string }>('/api/settings/white-label'),
+    staleTime: Infinity,
+  });
 
   const [isExpanded, setIsExpanded] = useState(() => {
     try {
@@ -143,9 +150,11 @@ export function AppShell({ user, children }: { user: User; children: ReactNode }
       >
         <div className={cn("mb-6 flex items-center", isExpanded ? "px-2 justify-between" : "justify-center")}>
           <Link href="/" className="flex items-center gap-2 rounded-lg overflow-hidden hover:opacity-80 transition-opacity">
-            <img src="/logo.png" alt="CRM TOI Logo" className="h-8 w-8 object-contain" />
+            <img src={brand.data?.logo ?? '/logo.png'} alt="Logo" className="h-8 w-8 object-contain" />
             {isExpanded && (
-              <span className="font-bold text-lg text-foreground tracking-tight">TOI</span>
+              <span className="font-bold text-base text-foreground tracking-tight truncate max-w-[120px]">
+                {brand.data?.name ?? 'TOI'}
+              </span>
             )}
           </Link>
         </div>

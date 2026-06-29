@@ -33,6 +33,74 @@ export default function App() {
     staleTime: 5 * 60_000,
   });
 
+  interface WhiteLabelData {
+    name: string;
+    logo: string;
+    accent_color: string;
+  }
+
+  // Cargar perfil de marca blanca al inicio de la aplicación
+  const brand = useQuery({
+    queryKey: ['white-label'],
+    queryFn: () => api.get<WhiteLabelData>('/api/settings/white-label'),
+    staleTime: Infinity,
+  });
+
+  const brandData = brand.data;
+  useEffect(() => {
+    if (brandData) {
+      // 1. Cambiar título del explorador
+      document.title = brandData.name;
+      
+      // 2. Cambiar favicon dinámicamente
+      const link: HTMLLinkElement | null = document.querySelector("link[rel~='icon']");
+      if (link) {
+        link.href = brandData.logo;
+      }
+
+      // 3. Convertir HEX del acento a HSL e inyectar en :root
+      try {
+        const hex = brandData.accent_color;
+        const r = parseInt(hex.slice(1, 3), 16) / 255;
+        const g = parseInt(hex.slice(3, 5), 16) / 255;
+        const b = parseInt(hex.slice(5, 7), 16) / 255;
+        const max = Math.max(r, g, b);
+        const min = Math.min(r, g, b);
+        let h = 0;
+        let s = 0;
+        const l = (max + min) / 2;
+
+        if (max !== min) {
+          const d = max - min;
+          s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+          switch (max) {
+            case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+            case g: h = (b - r) / d + 2; break;
+            case b: h = (r - g) / d + 4; break;
+          }
+          h /= 6;
+        }
+        const hDeg = Math.round(h * 360);
+        const sPct = Math.round(s * 100);
+        const lPct = Math.round(l * 100);
+        
+        document.documentElement.style.setProperty('--accent', `${hDeg} ${sPct}% ${lPct}%`);
+      } catch (e) {
+        // Fallback silencioso en caso de error en formato HEX
+      }
+    }
+  }, [brandData]);
+
+  // Listener para refrescar la marca en caliente al guardar cambios en Ajustes
+  useEffect(() => {
+    const handleBrandChanged = (e: Event) => {
+      const customEvent = e as CustomEvent<WhiteLabelData>;
+      queryClient.setQueryData(['white-label'], customEvent.detail);
+    };
+    window.addEventListener('brand-settings-changed', handleBrandChanged);
+    return () => window.removeEventListener('brand-settings-changed', handleBrandChanged);
+  }, [queryClient]);
+
   useEffect(() => {
     const onExpired = () => queryClient.setQueryData(['me'], null);
     window.addEventListener('session-expired', onExpired);

@@ -1,3 +1,5 @@
+import { mkdirSync, writeFileSync } from 'node:fs';
+import path from 'node:path';
 import { eq } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
@@ -231,5 +233,59 @@ export function settingsRoutes(app: FastifyInstance) {
     const cleanedUrl = url && url.trim().length > 0 ? url.trim() : null;
     await setSetting('n8n_iframe_url', cleanedUrl);
     return { url: cleanedUrl };
+  });
+
+  // ---- Marca Blanca (White Label) ----
+
+  app.get('/api/settings/white-label', async () => {
+    return {
+      name: await getSetting('white_label_name') ?? 'CRM TOI',
+      logo: await getSetting('white_label_logo') ?? '/logo.png',
+      accent_color: await getSetting('white_label_accent_color') ?? '#84cc16',
+    };
+  });
+
+  app.put('/api/settings/white-label', { preHandler: requireAdmin }, async (request) => {
+    const body = z.object({
+      name: z.string().min(1).max(100),
+      logo: z.string().nullable().optional(),
+      accent_color: z.string().regex(/^#[0-9a-fA-F]{6}$/).nullable().optional(),
+    }).parse(request.body);
+
+    await setSetting('white_label_name', body.name);
+    if (body.logo !== undefined) {
+      await setSetting('white_label_logo', body.logo);
+    }
+    if (body.accent_color !== undefined) {
+      await setSetting('white_label_accent_color', body.accent_color);
+    }
+
+    return {
+      name: body.name,
+      logo: body.logo ?? null,
+      accent_color: body.accent_color ?? null,
+    };
+  });
+
+  app.post('/api/settings/white-label/logo', { preHandler: requireAdmin }, async (request) => {
+    const file = await request.file({ limits: { fileSize: 2 * 1024 * 1024 } }); // máx 2MB
+    if (!file) throw badRequest('NO_FILE', 'Adjunta una imagen para el logotipo');
+
+    const ext = path.extname(file.filename).toLowerCase();
+    if (!['.png', '.jpg', '.jpeg', '.webp'].includes(ext)) {
+      throw badRequest('INVALID_FILE_TYPE', 'Formatos permitidos: PNG, JPG, JPEG, WEBP');
+    }
+
+    const buffer = await file.toBuffer();
+    const dir = path.join(config.uploadsDir, 'brand');
+    mkdirSync(dir, { recursive: true });
+    const safeName = `logo-${Date.now()}${ext}`;
+    const filePath = path.join(dir, safeName);
+    writeFileSync(filePath, buffer);
+
+    const logoUrl = `/api/uploads/brand/${safeName}`;
+    await setSetting('white_label_logo', logoUrl);
+
+    return { logo: logoUrl };
   });
 }

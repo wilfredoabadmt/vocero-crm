@@ -1,4 +1,4 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { MessageSquareText } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 import { Link } from 'wouter';
@@ -12,6 +12,12 @@ export function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
+
+  const brand = useQuery({
+    queryKey: ['white-label'],
+    queryFn: () => api.get<{ name: string; logo: string; accent_color: string }>('/api/settings/white-label'),
+    staleTime: Infinity,
+  });
 
   const login = useMutation({
     mutationFn: () => api.post<{ user: User }>('/api/auth/login', { email, password }),
@@ -37,10 +43,10 @@ export function LoginPage() {
       <div className="relative z-10 w-full max-w-md">
         <div className="mb-8 flex flex-col items-center gap-4">
           <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-[#0e1630]/80 border border-white/10 overflow-hidden p-2 shadow-xl shadow-black/25">
-            <img src="/logo.png" alt="CRM TOI Logo" className="h-full w-full object-contain" />
+            <img src={brand.data?.logo ?? '/logo.png'} alt="Logo" className="h-full w-full object-contain" />
           </div>
           <div className="text-center">
-            <h1 className="text-2xl font-bold tracking-tight text-white">Panel CRM</h1>
+            <h1 className="text-2xl font-bold tracking-tight text-white">{brand.data?.name ?? 'CRM TOI'}</h1>
             <p className="mt-1 text-sm text-slate-400">Centraliza las conversaciones de tu negocio</p>
           </div>
         </div>

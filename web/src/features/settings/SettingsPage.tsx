@@ -1,4 +1,4 @@
-import { Bot, Inbox, Milestone, Tags, Users, Zap, UserCheck } from 'lucide-react';
+import { Bot, Inbox, Milestone, Tags, Users, Zap, UserCheck, Sparkles } from 'lucide-react';
 import { Link } from 'wouter';
 import type { User } from '@/lib/types';
 import { cn } from '@/lib/utils';
@@ -9,6 +9,7 @@ import { TagsStagesSettings } from './TagsStagesSettings';
 import { UsersSettings } from './UsersSettings';
 import { WorkflowsSettings } from './WorkflowsSettings';
 import { N8nSettings } from './N8nSettings';
+import { WhiteLabelSettings } from './WhiteLabelSettings';
 
 const SECTIONS = [
   { id: 'bandejas', label: 'Bandejas', icon: Inbox, component: InboxesSettings },
@@ -18,6 +19,7 @@ const SECTIONS = [
   { id: 'crm', label: 'Etiquetas y embudo', icon: Tags, component: TagsStagesSettings },
   { id: 'automatizaciones', label: 'Automatizaciones', icon: Zap, component: WorkflowsSettings },
   { id: 'n8n', label: 'Integración n8n', icon: Milestone, component: N8nSettings },
+  { id: 'marca-blanca', label: 'Marca Blanca', icon: Sparkles, component: WhiteLabelSettings },
 ] as const;
 
 export function SettingsPage({ section, user }: { section?: string; user: User }) {

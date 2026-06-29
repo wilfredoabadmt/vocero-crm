@@ -17,8 +17,14 @@ const MIME_BY_EXT: Record<string, string> = {
 };
 
 export function uploadRoutes(app: FastifyInstance) {
-  app.get('/api/uploads/*', { preHandler: requireAuth }, async (request, reply) => {
+  app.get('/api/uploads/*', async (request, reply) => {
     const rel = (request.params as Record<string, string>)['*'] ?? '';
+    
+    // El subdirectorio brand/ (marca blanca) es de acceso público
+    if (!rel.startsWith('brand/')) {
+      await requireAuth(request, reply);
+    }
+
     const resolved = path.resolve(config.uploadsDir, rel);
     // Protección contra path traversal
     if (!resolved.startsWith(config.uploadsDir + path.sep) && resolved !== config.uploadsDir) {
