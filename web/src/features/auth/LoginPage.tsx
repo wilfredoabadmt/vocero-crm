@@ -29,22 +29,26 @@ export function LoginPage() {
   };
 
   return (
-    <div className="flex h-full items-center justify-center bg-background p-4">
-      <div className="w-full max-w-sm">
-        <div className="mb-8 flex flex-col items-center gap-3">
-          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-card overflow-hidden p-1 shadow-md">
+    <div className="relative flex min-h-screen w-full items-center justify-center bg-[#070b19] text-slate-100 overflow-hidden p-4">
+      {/* Resplandores de fondo futuristas */}
+      <div className="absolute top-1/4 left-1/4 -translate-x-1/2 -translate-y-1/2 w-[350px] h-[350px] rounded-full bg-blue-500/10 blur-[80px] pointer-events-none" />
+      <div className="absolute bottom-1/4 right-1/4 translate-x-1/2 translate-y-1/2 w-[400px] h-[400px] rounded-full bg-indigo-500/10 blur-[100px] pointer-events-none" />
+
+      <div className="relative z-10 w-full max-w-md">
+        <div className="mb-8 flex flex-col items-center gap-4">
+          <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-[#0e1630]/80 border border-white/10 overflow-hidden p-2 shadow-xl shadow-black/25">
             <img src="/logo.png" alt="CRM TOI Logo" className="h-full w-full object-contain" />
           </div>
           <div className="text-center">
-            <h1 className="text-xl font-semibold tracking-tight">Panel CRM</h1>
-            <p className="text-sm text-muted-foreground">Centraliza las conversaciones de tu negocio</p>
+            <h1 className="text-2xl font-bold tracking-tight text-white">Panel CRM</h1>
+            <p className="mt-1 text-sm text-slate-400">Centraliza las conversaciones de tu negocio</p>
           </div>
         </div>
 
-        <form onSubmit={onSubmit} className="rounded-lg border bg-card p-6 shadow-sm">
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="email">Correo electrónico</Label>
+        <form onSubmit={onSubmit} className="rounded-2xl border border-white/5 bg-[#0e1630]/60 backdrop-blur-lg p-8 shadow-2xl shadow-black/40">
+          <div className="space-y-5">
+            <div className="space-y-2">
+              <Label htmlFor="email" className="text-xs font-semibold uppercase tracking-wider text-slate-400">Correo electrónico</Label>
               <Input
                 id="email"
                 type="email"
@@ -54,10 +58,11 @@ export function LoginPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 autoFocus
+                className="border-white/10 bg-[#070b19]/60 text-white placeholder-slate-500 focus:border-lime-500/50 focus:ring-lime-500/20"
               />
             </div>
-            <div>
-              <Label htmlFor="password">Contraseña</Label>
+            <div className="space-y-2">
+              <Label htmlFor="password" className="text-xs font-semibold uppercase tracking-wider text-slate-400">Contraseña</Label>
               <Input
                 id="password"
                 type="password"
@@ -66,17 +71,23 @@ export function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                className="border-white/10 bg-[#070b19]/60 text-white placeholder-slate-500 focus:border-lime-500/50 focus:ring-lime-500/20"
               />
             </div>
-            {error && <p className="text-sm text-destructive">{error}</p>}
-            <Button type="submit" className="w-full" loading={login.isPending} variant="accent">
+            {error && <p className="text-sm text-red-400 bg-red-500/10 border border-red-500/20 px-3 py-2 rounded-lg">{error}</p>}
+            
+            <Button 
+              type="submit" 
+              className="w-full mt-2 bg-[#84cc16] hover:bg-[#a3e635] text-[#070b19] font-bold py-2.5 rounded-xl transition-all duration-300 shadow-lg shadow-lime-500/10 hover:shadow-[0_0_20px_rgba(132,204,22,0.4)] border-0" 
+              loading={login.isPending}
+            >
               Iniciar sesión
             </Button>
           </div>
         </form>
 
-        <div className="mt-4 text-center">
-          <Link href="/register" className="text-xs text-muted-foreground hover:text-foreground font-medium transition-colors">
+        <div className="mt-6 text-center">
+          <Link href="/register" className="text-xs text-slate-400 hover:text-white font-medium transition-colors">
             ¿Eres nuevo? Inicia una prueba gratuita de 5 días
           </Link>
         </div>
