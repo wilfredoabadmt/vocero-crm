@@ -155,10 +155,10 @@ export function AppShell({ user, children }: { user: User; children: ReactNode }
         )}
       >
         <div className={cn("mb-6 flex items-center", isExpanded ? "px-2 justify-between" : "justify-center")}>
-          <Link href="/" className="flex items-center gap-2 rounded-lg overflow-hidden hover:opacity-80 transition-opacity">
-            <img src={brand.data?.logo ?? '/logo.png'} alt="Logo" className="h-8 w-8 object-contain" />
+          <Link href="/" className="flex items-center gap-2 rounded-lg overflow-hidden hover:opacity-80 transition-opacity w-full">
+            <img src={brand.data?.logo ?? '/logo.png'} alt="Logo" className="h-8 w-8 object-contain shrink-0" />
             {isExpanded && (
-              <span className="font-bold text-base text-foreground tracking-tight truncate max-w-[120px]">
+              <span className="font-bold text-sm text-foreground tracking-tight whitespace-normal break-words leading-tight flex-1">
                 {brand.data?.name ?? 'TOI'}
               </span>
             )}
