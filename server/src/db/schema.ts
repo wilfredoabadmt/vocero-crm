@@ -59,6 +59,9 @@ export const users = pgTable('users', {
   isTrial: boolean('is_trial').notNull().default(false), // Flag para cuentas temporales
   trialExpiresAt: timestamp('trial_expires_at', { withTimezone: true }), // Vencimiento del trial (5 días)
   createdBy: bigint('created_by', { mode: 'number' }).references((): AnyPgColumn => users.id, { onDelete: 'set null' }), // Creador del usuario para aislamiento
+  brandName: text('brand_name'), // Nombre de marca personalizado
+  brandLogo: text('brand_logo'), // Ruta del logotipo personalizado
+  brandAccentColor: text('brand_accent_color'), // Color de acento HEX personalizado
   createdAt: createdAt(),
 });
 

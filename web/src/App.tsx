@@ -44,6 +44,7 @@ export default function App() {
     queryKey: ['white-label'],
     queryFn: () => api.get<WhiteLabelData>('/api/settings/white-label'),
     staleTime: Infinity,
+    enabled: !!me.data?.user,
   });
 
   const brandData = brand.data;

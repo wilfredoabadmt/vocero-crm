@@ -16,6 +16,7 @@ export type SessionUser = {
   is_trial: boolean;
   trial_expired: boolean;
   trial_expires_at: string | null;
+  created_by: number | null;
 };
 
 export async function createSession(userId: number): Promise<string> {
@@ -42,6 +43,7 @@ export async function getSessionUser(token: string | undefined): Promise<Session
       isActive: users.isActive,
       isTrial: users.isTrial,
       trialExpiresAt: users.trialExpiresAt,
+      createdBy: users.createdBy,
     })
     .from(sessions)
     .innerJoin(users, eq(sessions.userId, users.id))
@@ -64,6 +66,7 @@ export async function getSessionUser(token: string | undefined): Promise<Session
     is_trial: row.isTrial,
     trial_expired: trialExpired,
     trial_expires_at: row.trialExpiresAt ? new Date(row.trialExpiresAt).toISOString() : null,
+    created_by: row.createdBy,
   };
 }
 

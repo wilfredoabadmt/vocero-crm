@@ -3,10 +3,10 @@ import path from 'node:path';
 import { eq } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { requireAdmin, requireAuth } from '../../auth/guards.js';
+import { requireAdmin, requireAuth, requireAuthUser } from '../../auth/guards.js';
 import { config, decryptSecret, encryptSecret } from '../../config.js';
 import { db } from '../../db/client.js';
-import { settings } from '../../db/schema.js';
+import { settings, users } from '../../db/schema.js';
 import { badRequest } from '../../lib/errors.js';
 import { validateLlmKey, listFreeModels, type LlmProvider, FREE_MODELS } from '../../integrations/llm/client.js';
 import { listModels } from '../../integrations/openrouter/client.js';
@@ -237,28 +237,46 @@ export function settingsRoutes(app: FastifyInstance) {
 
   // ---- Marca Blanca (White Label) ----
 
-  app.get('/api/settings/white-label', async () => {
+  app.get('/api/settings/white-label', { preHandler: requireAuth }, async (request) => {
+    const me = requireAuthUser(request);
+    
+    // Si es agente, buscar al administrador creador
+    let adminId = me.id;
+    if (me.role === 'agent' && me.created_by) {
+      adminId = me.created_by;
+    }
+
+    const [adminUser] = await db
+      .select({
+        brandName: users.brandName,
+        brandLogo: users.brandLogo,
+        brandAccentColor: users.brandAccentColor,
+      })
+      .from(users)
+      .where(eq(users.id, adminId));
+
     return {
-      name: await getSetting('white_label_name') ?? 'CRM TOI',
-      logo: await getSetting('white_label_logo') ?? '/logo.png',
-      accent_color: await getSetting('white_label_accent_color') ?? '#84cc16',
+      name: adminUser?.brandName ?? 'CRM TOI',
+      logo: adminUser?.brandLogo ?? '/logo.png',
+      accent_color: adminUser?.brandAccentColor ?? '#84cc16',
     };
   });
 
   app.put('/api/settings/white-label', { preHandler: requireAdmin }, async (request) => {
+    const me = requireAuthUser(request);
     const body = z.object({
       name: z.string().min(1).max(100),
       logo: z.string().nullable().optional(),
       accent_color: z.string().regex(/^#[0-9a-fA-F]{6}$/).nullable().optional(),
     }).parse(request.body);
 
-    await setSetting('white_label_name', body.name);
-    if (body.logo !== undefined) {
-      await setSetting('white_label_logo', body.logo);
-    }
-    if (body.accent_color !== undefined) {
-      await setSetting('white_label_accent_color', body.accent_color);
-    }
+    const updates: Record<string, unknown> = {
+      brandName: body.name,
+    };
+    if (body.logo !== undefined) updates.brandLogo = body.logo;
+    if (body.accent_color !== undefined) updates.brandAccentColor = body.accent_color;
+
+    await db.update(users).set(updates).where(eq(users.id, me.id));
 
     return {
       name: body.name,
@@ -268,6 +286,7 @@ export function settingsRoutes(app: FastifyInstance) {
   });
 
   app.post('/api/settings/white-label/logo', { preHandler: requireAdmin }, async (request) => {
+    const me = requireAuthUser(request);
     const file = await request.file({ limits: { fileSize: 2 * 1024 * 1024 } }); // máx 2MB
     if (!file) throw badRequest('NO_FILE', 'Adjunta una imagen para el logotipo');
 
@@ -277,14 +296,14 @@ export function settingsRoutes(app: FastifyInstance) {
     }
 
     const buffer = await file.toBuffer();
-    const dir = path.join(config.uploadsDir, 'brand');
+    const dir = path.join(config.uploadsDir, 'brand', String(me.id));
     mkdirSync(dir, { recursive: true });
     const safeName = `logo-${Date.now()}${ext}`;
     const filePath = path.join(dir, safeName);
     writeFileSync(filePath, buffer);
 
-    const logoUrl = `/api/uploads/brand/${safeName}`;
-    await setSetting('white_label_logo', logoUrl);
+    const logoUrl = `/api/uploads/brand/${me.id}/${safeName}`;
+    await db.update(users).set({ brandLogo: logoUrl }).where(eq(users.id, me.id));
 
     return { logo: logoUrl };
   });
