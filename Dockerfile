@@ -34,7 +34,7 @@ COPY --from=server-build /app/server/dist ./server/dist
 COPY --from=server-build /app/server/drizzle ./server/drizzle
 COPY --from=web-build /app/web/dist ./web/dist
 
-RUN mkdir -p /data/uploads && chown -R node:node /data /app
+RUN mkdir -p /data/uploads && chown -R node:node /data
 USER node
 
 EXPOSE 3000
