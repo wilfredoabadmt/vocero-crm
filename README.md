@@ -1,161 +1,383 @@
-# Panel de Mensajería con CRM Multicanal
+# Vocero CRM
 
-Panel **single-tenant** y autoalojado para centralizar las conversaciones de WhatsApp de un negocio: bandeja en tiempo real, CRM ligero (etiquetas, notas, embudo Kanban), respuestas automáticas con agentes de IA y gestión de plantillas. Pensado para desplegarse en un VPS propio con **Coolify**. Calidad enterprise, sin funciones de más.
+[![CI](https://github.com/kevinrivm/vocero-crm/actions/workflows/ci.yml/badge.svg)](https://github.com/kevinrivm/vocero-crm/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-> ⚡ Pensado para que puedas **probarlo de punta a punta sin un número de WhatsApp real** (modo simulación) y, cuando estés listo, conectar un número productivo cambiando una variable de entorno.
+**El CRM de WhatsApp open source con un agente de IA que se pone a prueba solo.**
 
-## Tabla de contenido
+Vocero es un CRM self-hosted y gratuito para negocios que venden por WhatsApp:
+bandeja en tiempo real, pipeline de ventas, un agente de IA con el conocimiento
+de tu negocio y un **Laboratorio** donde clientes simulados lo evalúan antes de
+que hable con clientes reales. Una instancia = un negocio, en tu propio
+servidor, con tus datos.
 
-- [Características](#características)
-- [Alcance](#alcance-qué-hace-y-qué-no)
-- [Stack](#stack)
-- [Arranque rápido (desarrollo local)](#arranque-rápido-desarrollo-local)
-- [Modo simulación](#modo-simulación-sin-whatsapp-real)
-- [Pruebas](#pruebas)
-- [Despliegue en Coolify](#despliegue-en-coolify)
-- [Conectar un número real](#conectar-un-número-de-whatsapp-real)
-- [Gotchas y limitaciones](#gotchas-y-limitaciones)
-- [Variables de entorno](#variables-de-entorno)
-- [Documentación de diseño](#documentación-de-diseño)
+¿Ya tienes tu propio agente? Puedes apagar el de Vocero y conectar el tuyo por
+la [API de servicio `/api/bot/*`](#-trae-tu-propio-agente): el token de WhatsApp
+nunca sale del CRM.
 
-## Características
+![Bandeja de Vocero CRM](docs/screenshots/bandeja.png)
 
-- **Bandeja en tiempo real**: las conversaciones entrantes aparecen y se actualizan por WebSocket, sin recargar. Respuesta desde el mismo panel con estados de entrega (enviado/entregado/leído/fallido).
-- **Conexión de WhatsApp**: onboarding embebido con un tech provider; el backend recibe las credenciales del número y los eventos de mensaje redirigidos (override).
-- **Ventana de 24 h de Meta**: el panel calcula y bloquea localmente el texto libre fuera de ventana y ofrece el envío de **plantillas aprobadas**; la ventana se reabre en vivo cuando el cliente responde.
-- **Plantillas de WhatsApp**: editor guiado con vista previa fiel al estilo de WhatsApp; envío a aprobación de Meta y seguimiento de estado (pendiente/aprobada/rechazada).
-- **CRM**: leads automáticos, etiquetas con color, notas internas, y **Kanban** de 4 etapas (renombrables) con arrastrar y soltar.
-- **Agentes de IA**: ilimitados, creados con un wizard en lenguaje natural, con carga de documentos (RAG). Proveedor **OpenRouter** con tu propia API key. Uno actúa por defecto y responde en automático; se pausa cuando interviene un humano.
-- **Usuarios y roles**: administrador y asesor, con invalidación de sesiones al desactivar.
-- **UX/UI**: diseño sobrio y profesional, en español, con **modo claro y oscuro**.
+<p align="center">
+  <img src="docs/screenshots/laboratorio.png" width="49%" alt="Laboratorio: reporte con score y hallazgos" />
+  <img src="docs/screenshots/pipeline.png" width="49%" alt="Pipeline kanban" />
+</p>
 
-## Alcance: qué hace y qué no
+> 🎬 **Video-instalador oficial**: próximamente en
+> [el canal de Kevin Belier](https://www.youtube.com/@KevinBelier)
 
-**Sí cubre:**
+## ¿Para quién es?
 
-- Un solo negocio (**single-tenant**) con varios asesores y varias bandejas/números de WhatsApp.
-- Canal **WhatsApp** vía Cloud API v23 (recepción y envío, plantillas, ventana de 24 h).
-- IA generativa de respuestas vía **OpenRouter** (cualquier modelo que ofrezcan) con RAG sobre documentos que tú subas.
+- **Agencias de IA/automatización** que implementan CRM + agente para sus
+  clientes: despliegas una instancia por cliente en su VPS, la configuras y la
+  entregas con evidencia de calidad (el reporte del Laboratorio).
+- **Negocios** que quieren atender WhatsApp con IA sin regalar sus datos a un
+  SaaS: todo corre en tu servidor.
 
-**Todavía no cubre (fuera de alcance por ahora):**
+## Features
 
-- **Multicanal real**: Instagram, Facebook Messenger, email o LinkedIn están previstos como fase posterior; hoy solo WhatsApp.
-- **Multi-tenant / SaaS para terceros**: es para tu propio negocio, no para revender cuentas aisladas a clientes.
-- **El onboarding del número** depende de un *tech provider* externo (ver más abajo). El panel **no** intercambia tokens con Meta por sí mismo; consume las credenciales que ese proveedor le entrega.
-- Métricas/reportes avanzados, facturación, o flujos/automatizaciones tipo constructor visual.
+### 🧪 Laboratorio: el agente se prueba solo
+
+La pieza estelar. Seis clientes simulados —el comprador decidido, el preguntón
+de precios, el cliente enojado, el que pregunta lo que no sabes, el que exige
+un humano y el que escribe "ke onda si benden pintura"— conversan contra tu
+agente REAL en un **sandbox interno que jamás envía mensajes reales**. Un juez
+LLM independiente evalúa cada conversación y te entrega:
+
+- un **score 0–100** de qué tan listo está el agente,
+- **hallazgos con evidencia** (alucinaciones, huecos del conocimiento, fallas
+  de escalado, tono),
+- **sugerencias aplicables con un click** al knowledge base,
+- e **historial con delta**: re-corre después de cada cambio y mira si mejoraste.
+
+Deja de "esperar que el bot funcione": mídelo.
+
+### 💬 Bandeja de WhatsApp en tiempo real
+
+Tres columnas (conversaciones / hilo / contacto), mensajes entrantes en ≤2
+segundos sin recargar, estados enviado/entregado/leído, ventana de 24 horas
+visible y bloqueada correctamente (con envío de plantilla aprobada cuando está
+cerrada), respuestas del agente marcadas como IA y handoff a humano con un
+click.
+
+### 📊 Contactos y pipeline kanban
+
+Cada persona que escribe queda registrada sola y entra al pipeline
+(Nuevo → En conversación → Interesado → Cliente → Perdido, editable). Arrastra
+tarjetas, busca, agrega notas, archiva. El agente puede mover leads de etapa
+cuando detecta intención de compra.
+
+### 🤖 Agente de IA con TU conocimiento
+
+Configura nombre, tono, instrucciones y reglas de escalado; dale conocimiento
+en pares pregunta/respuesta y bloques libres. Responde SOLO con lo que sabe,
+agrupa ráfagas de mensajes en una respuesta, escala a humano cuando el cliente
+lo pide (con detección de respaldo), cuando él lo decide o cuando algo falla.
+Proveedor LLM por adaptador OpenRouter-compatible: usa el modelo que quieras.
+
+### 🔌 Trae tu propio agente
+
+Si prefieres conducir la conversación con tu propio cerebro —un microservicio
+tuyo, en tu mismo servidor— apaga el agente de Vocero y habilita la API de
+servicio con una `BOT_API_KEY`. Tu bot conversa a través del CRM, así que **el
+token de WhatsApp nunca sale de aquí** y todo queda en la bandeja como
+cualquier otra conversación.
+
+| Endpoint | Para qué |
+|---|---|
+| `GET /api/bot/context` | Quién es la persona, su etapa, si un humano tomó la conversación y si la ventana de 24 h sigue abierta |
+| `POST /api/bot/messages` | Responder. Sale por el mismo camino que el composer y queda marcado como IA |
+| `GET /api/bot/profile` | El perfil del agente y el knowledge base que editaste en la app |
+| `PUT /api/bot/ficha` | Guardar lo que tu bot descubre del lead (claves libres: cada negocio califica distinto) |
+| `POST /api/bot/handoff` | Devolver la conversación a un humano |
+| `POST /api/bot/typing` | Marcar leído y mostrar "escribiendo…" |
+| `GET /api/bot/media/{id}` | Descargar un adjunto entrante sin tocar Meta |
+| `POST /api/bot/reset` | Reiniciar una conversación de pruebas |
+
+Los 409 vienen tipados (`ai_paused`, `window_closed`, `sandbox_violation`) para
+que tu bot sepa si callarse, mandar plantilla o rendirse. El guion de pruebas
+está en [`tests/e2e/us-bot-api.md`](tests/e2e/us-bot-api.md).
+
+Agente de referencia: [nea-agent](https://github.com/kevinrivm/nea-agent), MIT.
+
+### 📄 Plantillas · 👥 Multi-usuario · 🔐 Self-hosted
+
+Plantillas con varias variables `{{1}}…{{n}}` y aprobación de Meta
+sincronizada; cuentas de equipo creadas por el propietario (el registro público
+se cierra tras la primera organización); token de WhatsApp cifrado en reposo
+(AES-256-GCM),
+webhook autenticado en dos capas y cero dependencias de runtime más allá de
+Meta y tu proveedor LLM opcional.
+
+## Requisitos
+
+- Un VPS con Docker (2 GB de RAM bastan) — con o sin [Coolify](https://coolify.io).
+- Un dominio apuntando al VPS (Meta exige **https** para webhooks).
+- Un número de WhatsApp en la Cloud API de Meta (ver [Conexión](#conexión-del-número-de-whatsapp)).
+- Opcional: una API key de [OpenRouter](https://openrouter.ai) (o cualquier
+  proveedor compatible) para el agente y el Laboratorio.
+
+## Instalación (~15 minutos)
+
+### 0. Apunta tu dominio
+
+Crea un registro **A** de `crm.tudominio.com` hacia la IP del VPS y espera a
+que resuelva.
+
+### Ruta A — Coolify guiado por IA (recomendada)
+
+Abre tu asistente de IA (p. ej. Claude Code con el MCP de Coolify), pásale el
+archivo [`INSTALL-IA.md`](INSTALL-IA.md) y responde 3 preguntas (dominio, token
+de OpenRouter opcional, ruta). El asistente crea la base de datos y la app,
+genera los secretos y verifica el healthcheck.
+
+### Ruta B — docker compose
+
+```bash
+git clone https://github.com/kevinrivm/vocero-crm.git vocero && cd vocero
+cp .env.example .env    # rellena: dominio + secretos (cada uno trae su comando openssl)
+docker compose up -d --build
+```
+
+Caddy emite el certificado HTTPS solo. Verifica con
+`https://crm.tudominio.com/api/health` → `{"ok":true}`.
+
+### Primer arranque
+
+1. Entra y **regístrate**: el primer registro crea tu organización y cierra el
+   registro público.
+2. Opcional: pulsa **"Cargar datos de demostración"** para explorar con la
+   **Ferretería El Martillo** (contactos, conversaciones, pipeline, un
+   knowledge base con huecos a propósito y una corrida de Laboratorio de
+   ejemplo — corre el Laboratorio y mira cómo los encuentra).
+3. La conexión de WhatsApp se hace después, en **Configuración → WhatsApp**.
+
+## Conexión del número de WhatsApp
+
+Vocero **consume** un token de la WhatsApp Cloud API — no implementa el
+Embedded Signup. Hay dos formas de obtenerlo:
+
+### Modo directo (el negocio tiene su propia app de Meta)
+
+1. Crea una app en [developers.facebook.com](https://developers.facebook.com)
+   con el producto WhatsApp y vincula tu número.
+2. Crea un **usuario del sistema** (Business Settings → System users) con
+   acceso a la WABA y genera un token permanente con permisos
+   `whatsapp_business_messaging` y `whatsapp_business_management`.
+3. En Vocero: **Configuración → WhatsApp** → pega WABA ID + Phone Number ID +
+   token → **Probar conexión** → Guardar.
+4. En el panel de Meta (WhatsApp → Configuration → Webhook) pega la **URL del
+   webhook** y el **verify token** que Vocero te muestra, y suscribe el campo
+   `messages` (y `message_template_status_update` si usarás plantillas).
+5. Recomendado: agrega `META_APP_SECRET` (App Secret de tu app) a las
+   variables de la instancia para la verificación de firma de cada evento.
+
+### Modo agencia (Tech Provider) — para agencias
+
+Tu plataforma de agencia ya hace el Embedded Signup y guarda los tokens de tus
+clientes; la instancia de Vocero del cliente solo recibe su token. El webhook
+del cliente se conecta con el **override de callback por WABA**:
+
+```text
+   Meta (WABA del cliente)
+        │  webhooks (override_callback_uri)
+        ▼
+   ┌────────────────────────────┐      ┌─────────────────────────────┐
+   │  Instancia Vocero          │      │  Backend de TU agencia      │
+   │  (VPS del cliente)         │      │  (Embedded Signup + tokens) │
+   │  /api/webhooks/wa/<token>  │      └──────────────┬──────────────┘
+   └────────────▲───────────────┘                     │
+                └────── token del cliente ────────────┘
+                        (pegado en el wizard)
+```
+
+**Checklist de 5 pasos (el orden importa):**
+
+1. **Despliega la instancia primero** (Ruta A o B) — el webhook debe estar en
+   línea para el paso 4.
+2. **Embedded Signup en TU plataforma**: el cliente conecta su número en tu
+   onboarding y tu backend guarda su token (intercambio de código → token).
+3. **Pega las credenciales en el wizard** de la instancia (WABA ID, Phone
+   Number ID, token) → **Probar conexión** → **GUARDAR**. Este paso va ANTES
+   del override: el webhook enruta cada mensaje por el Phone Number ID
+   **guardado** — sin conexión guardada, el handshake del paso 4 pasa igual,
+   pero los mensajes que lleguen se descartan en silencio.
+4. **Configura el override del callback a nivel WABA** hacia la instancia:
+
+   ```http
+   POST https://graph.facebook.com/v25.0/{WABA_ID_DEL_CLIENTE}/subscribed_apps
+   Authorization: Bearer {TOKEN_DEL_CLIENTE}
+   Content-Type: application/json
+
+   {
+     "override_callback_uri": "https://crm.cliente.com/api/webhooks/wa/{VERIFY_TOKEN}",
+     "verify_token": "{VERIFY_TOKEN}"
+   }
+   ```
+
+   La URL y el verify token exactos están en **Configuración → WhatsApp** de la
+   instancia. Meta hace el handshake en ese momento (la URI debe responder, si
+   no devuelve 422).
+5. **Registra el número** en la Cloud API si aún no lo está
+   (`POST /{PHONE_NUMBER_ID}/register`) y manda un mensaje de prueba al número:
+   debe aparecer en la bandeja en uno o dos segundos. Los mensajes del cliente
+   llegan directo a SU instancia, no a tu backend.
+
+> ⚠️ **Seguridad**: la URL del webhook contiene el verify token como segmento
+> secreto — trátala como una contraseña (no la publiques ni la mandes por
+> canales inseguros). En modo directo puedes añadir la capa extra de firma con
+> `META_APP_SECRET`.
+>
+> ℹ️ **Limitación conocida de Meta**: los eventos de estado de PLANTILLAS
+> (`message_template_status_update`) no siguen el override de callback — van a
+> la app dueña. Por eso Vocero también **sincroniza plantillas por la API de
+> Graph** (botón "Sincronizar" en Configuración → Plantillas), así el modo
+> agencia ve las aprobaciones igual.
+
+## Configuración de la IA
+
+En las variables de la instancia:
+
+```bash
+OPENROUTER_API_TOKEN=sk-or-...        # tu key
+OPENROUTER_MODEL=anthropic/claude-sonnet-4.5
+OPENROUTER_JUDGE_MODEL=               # opcional: modelo distinto para el juez del Laboratorio
+OPENROUTER_BASE_URL=https://openrouter.ai/api   # o tu proveedor OpenAI-compatible
+```
+
+Sin token, todo lo demás funciona; Agente y Laboratorio muestran cómo
+activarlos. Después configura el comportamiento y el conocimiento en la
+pestaña **Agente** y corre el **Laboratorio** antes de encender el agente con
+clientes reales.
+
+## Cumplimiento con las políticas de Meta
+
+1. **Opt-in**: escribe solo a personas que iniciaron la conversación o
+   aceptaron recibir mensajes; Vocero respeta la ventana de 24 h y bloquea el
+   texto libre fuera de ella.
+2. **Plantillas aprobadas** para reabrir conversaciones: nada de trucos para
+   saltarse la aprobación de Meta.
+3. **El Laboratorio es 100 % interno**: los clientes simulados jamás tocan la
+   API de WhatsApp (bloqueado por diseño y verificado con tests).
+4. **Sin spam ni broadcast**: Vocero no incluye envíos masivos; úsalo para
+   conversaciones reales de venta y soporte.
+5. **Datos del cliente en su servidor**: cada negocio aloja su instancia; el
+   token va cifrado en reposo y los webhooks se validan por URL secreta y
+   firma opcional.
+
+## FAQ de errores comunes
+
+**El webhook no se verifica en Meta** — El dominio aún no resuelve, no es
+https, o pegaste mal la URL/verify token. Cópialos exactos de Configuración →
+WhatsApp.
+
+**El webhook verificó bien pero no llegan mensajes** — Casi siempre: la
+conexión no está GUARDADA en el wizard (el handshake no la necesita, la
+ingesta sí — enruta por el Phone Number ID guardado). Entra a Configuración →
+WhatsApp, guarda la conexión y reenvía un mensaje. Los logs de la instancia
+muestran una advertencia con el Phone Number ID desconocido.
+
+**Llegan mensajes pero no salen** — Revisa el estado de la conexión en
+Configuración → WhatsApp. Si dice "reconectar", el token expiró: pega uno
+nuevo. En modo directo usa un token de usuario del sistema (no expira).
+
+**Error 131030 al enviar** — El número destino no está en la lista de
+permitidos (números de prueba de Meta) o el formato es inválido. Vocero ya
+normaliza los números de México (521 → 52).
+
+**El agente no responde** — ¿Token de IA configurado? ¿Toggle global
+encendido? ¿La conversación tiene la IA activa y sin handoff? ¿Ventana de 24 h
+abierta? Revisa también los logs de la instancia.
+
+**`ENCRYPTION_KEY` inválida al arrancar** — Debe ser exactamente 32 bytes en
+base64 (44 caracteres): `openssl rand -base64 32`.
+
+**La app arranca pero /api/health falla** — La base de datos no está lista o
+`DATABASE_URL` apunta mal; revisa los logs (`docker compose logs app`).
+
+**Olvidé mi contraseña y no puedo entrar** — Vocero no manda correos (sería una
+dependencia externa) y el registro público se cierra con la primera
+organización, así que no hay flujo de "olvidé mi contraseña". La salida es
+reescribir el hash en la base:
+
+```bash
+NEW_PASSWORD='tu-contraseña-nueva' node scripts/reset-password.mjs tu@correo.com
+```
+
+El script **no toca la base**: te imprime el `UPDATE` para que lo pegues tú en
+la consola de Postgres. Corre desde tu máquina, con el repo clonado y
+`pnpm install` hecho — la contraseña nueva nunca sale de ahí. Va por variable de
+entorno y no por argumento porque un argumento queda en el historial del shell
+y se ve en `ps`.
+
+Debe responder `UPDATE 1`. Si responde `UPDATE 0`, el correo no coincide;
+míralos con `SELECT email FROM "user";`.
+
+## Versiones
+
+La versión que está corriendo se ve **abajo en la barra lateral** (`v1.1.0 ·
+8e62d0b`) y en el healthcheck, para poder confirmar un despliegue con un
+`curl` sin abrir la app:
+
+```bash
+curl -s https://crm.tudominio.com/api/health
+# {"ok":true,"version":"1.1.0","commit":"8e62d0b"}
+```
+
+Los dos valores se congelan al **construir**, así que no pueden mentir en
+tiempo de ejecución. El commit lo inyecta Coolify solo; con docker compose se
+pasa con `--build-arg SOURCE_COMMIT=$(git rev-parse HEAD)`, y si falta se ve
+solo la versión.
+
+SemVer sobre lo que le importa a quien opera una instancia:
+
+| | Cuándo sube |
+|---|---|
+| **Mayor** (`2.0.0`) | Hay que hacer algo a mano para actualizar: cambiar una variable de entorno, migrar datos, reconectar algo. |
+| **Menor** (`1.2.0`) | Funciones nuevas. Actualizar es redesplegar. |
+| **Parche** (`1.1.1`) | Arreglos y ajustes. Actualizar es redesplegar. |
+
+La versión vive en `package.json` y se sube en el PR que publica el cambio.
+
+## Roadmap
+
+- Multimedia completa en la bandeja (hoy: indicador de tipo).
+- RAG para knowledge bases grandes (hoy: se inyecta completo con aviso de tamaño).
+- Personas configurables del Laboratorio y comparativas entre corridas.
+- Borrado de plantillas desde la app.
+- Analytics de conversación y plantillas.
+- Broadcast con opt-in verificado.
+
+### Fuera de alcance a propósito
+
+**Motor de agendamiento** (horarios de atención, huecos, reservas). Son unas
+mil líneas, dos tablas y una dependencia de fechas dentro de un proyecto cuyo
+argumento es ser ligero; y el estado de qué huecos se ofrecieron pertenece a la
+conversación, o sea al agente, no al CRM. Si tu bot agenda, el contrato que
+esperan `/api/bot/availability` y `/api/bot/bookings` está documentado en el
+[issue #8](https://github.com/kevinrivm/vocero-crm/issues/8) para que lo
+implementes donde te convenga.
+
+Si viste algún video donde digo que Vocero trae el motor de agendamiento: me
+adelanté, y esta es la aclaración.
 
 ## Stack
 
-Monorepo TypeScript (npm workspaces):
-
-- **`server/`** — Fastify 5, Drizzle ORM, PostgreSQL 16, WebSocket. Integra WhatsApp Cloud API v23 y OpenRouter. RAG con full-text search de Postgres.
-- **`web/`** — React 18 + Vite, Tailwind CSS (componentes estilo shadcn/Radix), TanStack Query.
-- **`e2e/`** — Playwright.
-
-En producción, **un único contenedor** sirve la API, el WebSocket y el frontend compilado; la única dependencia de infraestructura es PostgreSQL.
-
-## Arranque rápido (desarrollo local)
-
-Requisitos: **Node.js 20+** y npm. No necesitas Docker ni un Postgres aparte para desarrollar: el modo local usa **PGlite** (Postgres embebido en disco).
-
-```bash
-npm install
-cp .env.example .env       # En Windows (PowerShell): copy .env.example .env
-npm run db:migrate         # Crea el esquema en PGlite (server/data/dev-db)
-npm run dev                # server :3000 + web :5173
-```
-
-Abre <http://localhost:5173>. Login inicial: el `ADMIN_EMAIL` / `ADMIN_PASSWORD` del `.env` (por defecto `admin@panel.local` / `admin1234`). El primer arranque siembra ese usuario admin automáticamente.
-
-## Modo simulación (sin WhatsApp real)
-
-Con `SIMULATION_MODE=true` (valor por defecto en `.env.example`) se habilitan endpoints que inyectan tráfico **idéntico al de Meta**, y los envíos salientes a Meta quedan *mockeados* (un mensaje pasa solo de `enviado`→`entregado`, y las plantillas se "aprueban" a los ~5 s). Es la forma recomendada de probar todo antes de tocar un número productivo.
-
-```bash
-# 1) Crear una bandeja simulada ya "conectada"
-curl -X POST localhost:3000/api/simulate/provisioning \
-  -H "Authorization: Bearer $PROVISIONING_SECRET"
-
-# 2) Inyectar un mensaje entrante (aparece en vivo en el panel)
-curl -X POST localhost:3000/api/simulate/incoming-message \
-  -H "Authorization: Bearer $PROVISIONING_SECRET" -H "Content-Type: application/json" \
-  -d '{"inbox_id":1,"from":"5215512345678","name":"Cliente","type":"text","body":"Hola"}'
-
-# 3) Forzar una conversación FUERA de la ventana de 24 h
-#    añade  "timestamp_offset_hours": -25  al cuerpo del paso 2
-```
-
-> Los endpoints `/api/simulate/*` requieren el `PROVISIONING_SECRET` (o una sesión de admin) y **solo existen** cuando `SIMULATION_MODE=true`. En producción real, ponlo en `false`.
-
-## Pruebas
-
-```bash
-npm test       # Vitest: 40 pruebas (ventana 24h, dedup de webhooks, autoreply, RAG, roles…)
-npm run e2e    # Playwright: 22 flujos E2E contra el build real con simulación
-```
-
-Los E2E levantan el build de producción con `SIMULATION_MODE` e inyectan payloads simulados, así validan el flujo completo (login, tiempo real, respuesta, ventana 24 h, plantillas, IA) sin depender de Meta.
-
-## Despliegue en Coolify
-
-1. **Nuevo recurso → Docker Compose**, apuntando a este repositorio (el `docker-compose.yml` define `app` + `db`).
-2. **Variables de entorno** (genera secretos fuertes, mínimo 32 caracteres):
-   - `SESSION_SECRET`, `PROVISIONING_SECRET`, `POSTGRES_PASSWORD`
-   - `META_APP_SECRET`, `WEBHOOK_VERIFY_TOKEN` (para el webhook real de Meta)
-   - `ADMIN_EMAIL`, `ADMIN_PASSWORD`
-   - `PUBLIC_URL=https://tu-dominio`
-   - `SIMULATION_MODE=false` en producción real
-3. **Dominio + TLS**: asígnalo al servicio `app` (puerto 3000); Coolify gestiona el certificado.
-4. **Volúmenes**: `db-data` y `uploads` ya están declarados en el compose.
-5. Deploy. Las migraciones y el seed corren al arrancar; healthcheck en `/api/health`.
-
-> En producción, `SESSION_SECRET` y `PROVISIONING_SECRET` son **obligatorios**: el servidor se niega a arrancar sin ellos (no hay valores por defecto inseguros fuera de desarrollo).
-
-## Conectar un número de WhatsApp real
-
-El panel está diseñado para trabajar con un **tech provider** (proveedor técnico de Meta) que hace el onboarding del número y redirige sus eventos al panel mediante un *override*. El flujo:
-
-1. El admin pulsa **"Conectar WhatsApp"**; el panel crea una bandeja `pending` y redirige a la URL de onboarding del tech provider con `?client=<nombre-de-la-bandeja>`.
-2. El usuario completa el registro embebido de su número.
-3. El servidor del tech provider intercambia el token temporal por uno permanente y, dentro de una ventana de 1–180 s, hace **dos cosas**:
-   - Entrega las credenciales a `POST https://tu-dominio/api/provisioning/whatsapp` con `Authorization: Bearer <PROVISIONING_SECRET>` (cuerpo: `waba_id`, `phone_number_id`, `display_phone_number`, `access_token`, y opcionalmente `client` = nombre de la bandeja).
-   - Apunta el `override_callback_uri` de ese número a `https://tu-dominio/api/webhooks/whatsapp` (con el `WEBHOOK_VERIFY_TOKEN` configurado).
-4. El admin vuelve al panel y ve la bandeja **Conectada**.
-
-A partir de ahí, los mensajes de ese número llegan al webhook del panel (con verificación de firma `X-Hub-Signature-256` usando `META_APP_SECRET`) y las respuestas salen por la Graph API con el token guardado **cifrado** (AES-256-GCM).
-
-> El intercambio de tokens con Meta y el *override* los hace **el tech provider**, no el panel. El panel solo necesita `PROVISIONING_SECRET` (para recibir credenciales) y `META_APP_SECRET` (para verificar la firma de los webhooks).
-
-## Gotchas y limitaciones
-
-- **Ventana de 24 h de Meta**: fuera de la ventana solo puedes enviar **plantillas aprobadas**. El panel lo aplica localmente y te guía a las plantillas; si intentas texto libre devuelve `422 WINDOW_CLOSED`. La ventana se reabre sola cuando el cliente vuelve a escribir.
-- **La IA solo responde dentro de la ventana**: si la conversación está fuera de las 24 h, el agente automático no contesta (no puede mandar texto libre). Si la llamada a OpenRouter falla, la conversación se marca como "necesita humano" en vez de inventar una respuesta.
-- **OpenRouter con tu propia API key**: no se incluye ninguna clave. Cárgala en *Ajustes → IA*; se guarda cifrada. Los costos de inferencia corren por tu cuenta de OpenRouter.
-- **PGlite es solo para desarrollo/pruebas**. En producción usa PostgreSQL (el `docker-compose.yml` ya lo trae). No copies una base PGlite a producción.
-- **Single-tenant**: una instancia = un negocio. Para varios negocios, despliega instancias separadas.
-- **Idioma**: la UI está en **español**. No hay i18n todavía.
-- **Cambia las credenciales por defecto**: si despliegas con `admin@panel.local` / `admin1234`, cámbialas de inmediato. Define secretos fuertes y nunca subas tu `.env` (ya está en `.gitignore`).
-- **El webhook rechaza firmas inválidas**: si `META_APP_SECRET` está vacío en producción, las peticiones al webhook se responden con `401`. Configúralo antes de conectar un número real.
-
-## Variables de entorno
-
-Todas están documentadas en [`.env.example`](.env.example). Las imprescindibles:
-
-| Variable | Para qué | Notas |
-| --- | --- | --- |
-| `DATABASE_URL` | Conexión a la base | `pglite://…` en local, `postgres://…` en prod |
-| `SESSION_SECRET` | Firma de sesiones y cifrado de secretos | **Obligatorio** en prod, 32+ chars |
-| `PROVISIONING_SECRET` | Bearer del endpoint de provisioning | **Obligatorio** en prod |
-| `META_APP_SECRET` | Verifica la firma de los webhooks de Meta | Requerido para WhatsApp real |
-| `WEBHOOK_VERIFY_TOKEN` | Handshake GET del webhook de Meta | Requerido para WhatsApp real |
-| `SIMULATION_MODE` | Activa `/api/simulate/*` y mockea envíos | `true` en local, `false` en prod |
-| `ADMIN_EMAIL` / `ADMIN_PASSWORD` | Usuario admin sembrado al arrancar | Cámbialos tras el primer login |
-| `PUBLIC_URL` | URL pública de la instancia | p. ej. `https://tu-dominio` |
-
-## Documentación de diseño
-
-La especificación, el plan, los contratos (REST/WS, integración WhatsApp, modo simulación), el modelo de datos y el desglose de tareas están en [`specs/001-messaging-crm-panel/`](specs/001-messaging-crm-panel/). Sirven como referencia de cómo está construido y por qué.
+Next.js 15 (App Router) + React 19 · TypeScript estricto · PostgreSQL +
+Drizzle ORM · Better Auth · Tailwind CSS · SSE (sin WebSockets) · Docker
+multi-stage con migraciones al arranque. Diseñado para que una agencia lo
+modifique con un asistente de IA: specs y decisiones de diseño en
+[`specs/`](specs/), guía de modificación en [`CLAUDE.md`](CLAUDE.md).
 
 ## Licencia
 
-Distribuido bajo licencia **MIT** (ver [`LICENSE`](LICENSE)): puedes usarlo, modificarlo, desplegarlo y redistribuirlo libremente, conservando el aviso de copyright. Se entrega *as is*, sin garantías.
+[MIT](LICENSE) — úsalo, véndelo instalado, modifícalo. Si te sirve, una ⭐ al
+repo ayuda a que más gente lo encuentre.
+
+## Créditos
+
+Creado por [Kevin Belier](https://www.youtube.com/@KevinBelier). ¿Quieres
+aprender a convertirte en Meta Tech Provider y monetizar con tu agencia de IA?
+Únete a la [VIBE Community](https://www.skool.com/vibe-community-vip). Los patrones
+de producción (webhook firmado, ingesta idempotente, cifrado de tokens) vienen
+de un proyecto de referencia privado en producción, portados y simplificados
+para este repo.

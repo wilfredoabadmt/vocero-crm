@@ -5,7 +5,7 @@ import { isWindowOpen, windowRemainingMs } from "@/server/inbox/window";
 
 export type ConversationDto = {
   id: string;
-  contact: { id: string; name: string; phone: string };
+  contact: { id: string; name: string; phone: string | null };
   stageName: string | null;
   aiEnabled: boolean;
   handoffAt: string | null;
@@ -94,8 +94,12 @@ export async function listMessages(
 ) {
   const db = getDb();
   return db
-    .select()
+    .select({ message: schema.message, media: schema.mediaAsset })
     .from(schema.message)
+    .leftJoin(
+      schema.mediaAsset,
+      eq(schema.message.mediaAssetId, schema.mediaAsset.id)
+    )
     .where(
       scoped(
         schema.message.organizationId,

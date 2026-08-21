@@ -188,6 +188,7 @@ export async function seedDemo(
       id: contactId,
       organizationId,
       phone: demo.phone,
+      waIdentity: demo.phone,
       name: demo.name,
       notes: demo.notes ?? null,
     });
@@ -222,6 +223,7 @@ export async function seedDemo(
         text: msg.text,
         status: msg.dir === "in" ? "delivered" : "read",
         aiGenerated: msg.ai ?? false,
+        origin: msg.ai ? "ai" : "operator",
         waTimestamp: at,
         createdAt: at,
       });

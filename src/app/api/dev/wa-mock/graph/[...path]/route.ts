@@ -2,6 +2,7 @@ import { mockGuard } from "@/lib/dev-guard";
 import {
   getWaMockState,
   nextN,
+  nextOutboundWamid,
   type MockTemplate,
 } from "@/server/dev/wa-mock-state";
 
@@ -55,8 +56,19 @@ export async function GET(req: Request, ctx: Params) {
         language: t.language,
         category: t.category,
         status: t.status,
-        components: [{ type: "BODY", text: t.body }],
+        components: t.components ?? [{ type: "BODY", text: t.body }],
       })),
+    });
+  }
+
+  // GET {mediaId} (ids "media...") → metadata de adjunto (media proxy del bot)
+  if (path.length === 1 && path[0]!.startsWith("media")) {
+    const origin = new URL(req.url).origin;
+    return Response.json({
+      id: path[0],
+      mime_type: path[0]!.includes("pdf") ? "application/pdf" : "image/jpeg",
+      file_size: 13,
+      url: `${origin}/api/dev/wa-mock/media-file/${path[0]}`,
     });
   }
 
@@ -79,14 +91,71 @@ export async function POST(req: Request, ctx: Params) {
   const token = bearerToken(req);
   if (token.endsWith("-invalid")) return invalidTokenResponse();
 
+  // POST {phoneNumberId}/media (multipart, 008) → id de media subido.
+  // Va ANTES del parseo JSON: el body es form-data.
+  if (path.length === 2 && path[1] === "media") {
+    const form = await req.formData().catch(() => null);
+    const file = form?.get("file");
+    if (!(file instanceof Blob)) {
+      return Response.json(
+        { error: { message: "missing file", type: "GraphMethodException", code: 100 } },
+        { status: 400 }
+      );
+    }
+    // El id arranca con "media" para que el GET de metadata lo resuelva.
+    return Response.json({ id: `media-up-${nextN()}` });
+  }
+
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
+
+  // POST {phoneNumberId}/messages con status:"read" → typing/leído:
+  // NO es un mensaje saliente — no contamina el outbox.
+  if (path.length === 2 && path[1] === "messages" && body.status === "read") {
+    return Response.json({ success: true });
+  }
 
   // POST {phoneNumberId}/messages → registra en el outbox
   if (path.length === 2 && path[1] === "messages") {
     const state = getWaMockState();
+    // Meta responde 132000 si los parámetros no cuadran con las {{n}} de la
+    // plantilla aprobada. El mock lo replica para que un desfase no pase.
+    if (body.type === "template") {
+      const tplSend = body.template as
+        | {
+            name?: string;
+            components?: { type?: string; parameters?: unknown[] }[];
+          }
+        | undefined;
+      const known = state.templates.find((t) => t.name === tplSend?.name);
+      if (known) {
+        const expected = [...known.body.matchAll(/\{\{\s*(\d+)\s*\}\}/g)].reduce(
+          (max, m) => Math.max(max, Number(m[1])),
+          0
+        );
+        const got =
+          tplSend?.components?.find(
+            (c) => (c.type ?? "").toLowerCase() === "body"
+          )?.parameters?.length ?? 0;
+        if (expected !== got) {
+          return Response.json(
+            {
+              error: {
+                message: `(#132000) Number of parameters does not match the expected number of params: expected ${expected}, got ${got}`,
+                type: "OAuthException",
+                code: 132000,
+                fbtrace_id: "mock",
+              },
+            },
+            { status: 400 }
+          );
+        }
+      }
+    }
     const n = nextN();
+    const waMessageId = nextOutboundWamid();
     state.outbox.push({
       n,
+      waMessageId,
       phoneNumberId: path[0]!,
       to: String(body.to ?? ""),
       type: String(body.type ?? "text"),
@@ -96,16 +165,40 @@ export async function POST(req: Request, ctx: Params) {
     return Response.json({
       messaging_product: "whatsapp",
       contacts: [{ input: body.to, wa_id: body.to }],
-      messages: [{ id: `wamid.mock.out.${n}` }],
+      messages: [{ id: waMessageId }],
     });
   }
 
   // POST {wabaId}/message_templates → alta de plantilla (queda PENDING)
   if (path.length === 2 && path[1] === "message_templates") {
     const state = getWaMockState();
-    const bodyComponent = (
-      body.components as { type?: string; text?: string }[] | undefined
-    )?.find((c) => (c.type ?? "").toUpperCase() === "BODY");
+    const components = (body.components ?? []) as {
+      type?: string;
+      text?: string;
+      example?: { body_text?: string[][] };
+    }[];
+    const bodyComponent = components.find(
+      (c) => (c.type ?? "").toUpperCase() === "BODY"
+    );
+    // Meta valida que haya un ejemplo por cada {{n}} del cuerpo: sin esto el
+    // mock aceptaría plantillas que producción rechaza (error 100).
+    const highestVar = [
+      ...(bodyComponent?.text ?? "").matchAll(/\{\{\s*(\d+)\s*\}\}/g),
+    ].reduce((max, m) => Math.max(max, Number(m[1])), 0);
+    const examples = bodyComponent?.example?.body_text?.[0] ?? [];
+    if (highestVar !== examples.length) {
+      return Response.json(
+        {
+          error: {
+            message: `Invalid parameter: expected ${highestVar} example value(s) for the body, got ${examples.length}`,
+            type: "GraphMethodException",
+            code: 100,
+            fbtrace_id: "mock",
+          },
+        },
+        { status: 400 }
+      );
+    }
     const tpl: MockTemplate = {
       id: `tplmock_${nextN()}`,
       name: String(body.name ?? ""),
@@ -113,6 +206,7 @@ export async function POST(req: Request, ctx: Params) {
       category: String(body.category ?? "UTILITY"),
       status: "PENDING",
       body: bodyComponent?.text ?? "",
+      components,
     };
     state.templates.push(tpl);
     return Response.json({ id: tpl.id, status: "PENDING", category: tpl.category });

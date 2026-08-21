@@ -5,18 +5,20 @@ const nano = customAlphabet(alphabet, 20);
 
 const prefixes = {
   organization: "org",
+  member: "mem",
   contact: "ct",
   conversation: "cv",
   message: "msg",
   lead: "ld",
   stage: "stg",
+  leadStageEvent: "lse",
   credentials: "cred",
   agentProfile: "agp",
   kbEntry: "kb",
   template: "tpl",
   testRun: "run",
   testCase: "case",
-  agentMedia: "med",
+  mediaAsset: "ma",
 } as const;
 
 export type IdKind = keyof typeof prefixes;

@@ -1,5 +1,6 @@
 import {
   boolean,
+  check,
   index,
   integer,
   jsonb,
@@ -111,15 +112,41 @@ export const contact = pgTable(
     organizationId: text("organization_id")
       .notNull()
       .references(() => organization.id, { onDelete: "cascade" }),
-    phone: text("phone").notNull(),
+    /**
+     * Llave de resolución WhatsApp (003): teléfono normalizado (521→52) o
+     * `bsuid:<id>` cuando Meta no manda wa_id. Estable de por vida.
+     */
+    waIdentity: text("wa_identity").notNull(),
+    /** Teléfono como ATRIBUTO opcional (003): falta en contactos BSUID. */
+    phone: text("phone"),
+    /** Business-Scoped User ID si se conoce (003). */
+    waUserId: text("wa_user_id"),
     name: text("name").notNull(),
     notes: text("notes"),
+    /**
+     * Ficha de calificación que levanta un cerebro externo por
+     * `PUT /api/bot/ficha`. Es un objeto libre a propósito: los datos que
+     * importan de un lead los define cada negocio (una clínica querrá
+     * "tratamiento", una constructora "metros"), y cablearlos como columnas
+     * obligaría a migrar el CRM cada vez que alguien cambia su cuestionario.
+     * Merge campo a campo; `null` explícito borra la clave.
+     */
+    ficha: jsonb("ficha").$type<Record<string, unknown>>(),
+    /**
+     * De dónde salió el prospecto. NULL = nadie la capturó, y entonces la API
+     * la deduce. Así no hace falta backfill ni marcar en falso los contactos
+     * que ya existían.
+     */
+    source: text("source", {
+      enum: ["anuncio", "organico", "referido", "conocido", "otro"],
+    }),
     archivedAt: timestamp("archived_at"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
   },
   (t) => [
-    uniqueIndex("contact_org_phone_uq").on(t.organizationId, t.phone),
+    uniqueIndex("contact_org_wa_identity_uq").on(t.organizationId, t.waIdentity),
+    index("contact_org_wa_user_id_idx").on(t.organizationId, t.waUserId),
     index("contact_org_name_idx").on(t.organizationId, t.name),
   ]
 );
@@ -156,6 +183,21 @@ export const lead = pgTable(
       .notNull()
       .references(() => pipelineStage.id),
     position: integer("position").notNull().default(0),
+    /**
+     * Monto de la negociación en CENTAVOS ENTEROS. NULL = nadie lo capturó, que
+     * no es lo mismo que cero: un trato sin monto no vale $0, simplemente no se
+     * sabe, y el tablero lo dice con palabras en vez de sumar un cero.
+     */
+    amountCents: integer("amount_cents"),
+    /** Moneda del monto; la del negocio al capturarlo (Ajustes → Marca). */
+    currency: text("currency"),
+    /**
+     * Prioridad de cierre. NULL = nadie la ha decidido, que NO es lo mismo que
+     * "media": nada la escribe automáticamente, así que el dueño puede confiar
+     * en que lo que ve es lo que él puso.
+     */
+    priority: text("priority", { enum: ["alta", "media", "baja"] }),
+    priorityUpdatedAt: timestamp("priority_updated_at"),
     lastActivityAt: timestamp("last_activity_at"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
@@ -163,6 +205,92 @@ export const lead = pgTable(
   (t) => [
     uniqueIndex("lead_contact_uq").on(t.contactId),
     index("lead_org_stage_idx").on(t.organizationId, t.stageId, t.position),
+  ]
+);
+
+/**
+ * Bitácora de movimientos de etapa: append-only. Nada se actualiza ni se borra;
+ * corregir un dato es agregar un movimiento nuevo.
+ *
+ * Es el cimiento de todo lo histórico: sin ella el CRM solo sabe dónde está
+ * cada lead HOY, y "¿cuánto cerré en julio?" no tiene respuesta.
+ *
+ * Regla dura: la ÚNICA puerta que escribe aquí —y que escribe `lead.stage_id`—
+ * es `src/server/leads/stage-history.ts`. Un unit test de vigilancia falla si
+ * aparece otra escritura, porque un camino que mueva el lead sin registrar el
+ * evento no truena: solo hace que las gráficas mientan meses después.
+ */
+export const leadStageEvent = pgTable(
+  "lead_stage_event",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    leadId: text("lead_id")
+      .notNull()
+      .references(() => lead.id, { onDelete: "cascade" }),
+    /** Denormalizado a propósito: casi toda agregación cruza con el contacto,
+     *  y el join extra se pagaría en cada consulta. */
+    contactId: text("contact_id")
+      .notNull()
+      .references(() => contact.id, { onDelete: "cascade" }),
+    /** NULL = el lead nació en `toStage` (evento de creación). */
+    fromStageId: text("from_stage_id").references(() => pipelineStage.id, {
+      onDelete: "set null",
+    }),
+    fromStageName: text("from_stage_name"),
+    toStageId: text("to_stage_id").references(() => pipelineStage.id, {
+      onDelete: "set null",
+    }),
+    /** Snapshots: sobreviven al renombre y al borrado de la etapa, para que
+     *  reorganizar el tablero de hoy no reescriba el embudo del pasado. */
+    toStageName: text("to_stage_name").notNull(),
+    toStageKind: text("to_stage_kind", { enum: ["open", "won", "lost"] })
+      .notNull()
+      .default("open"),
+    /** Cuándo PASÓ (no cuándo se registró). */
+    occurredAt: timestamp("occurred_at").notNull().defaultNow(),
+    /** NULL = no lo movió una persona (bot, sistema, migración). */
+    actorUserId: text("actor_user_id").references(() => user.id, {
+      onDelete: "set null",
+    }),
+    source: text("source", {
+      enum: ["dueno", "bot", "sistema", "migracion"],
+    })
+      .notNull()
+      .default("dueno"),
+    /** true = fecha SEMBRADA en la migración, no observada. Cuenta para los
+     *  totales pero jamás para promedios de tiempo. */
+    approximate: boolean("approximate").notNull().default(false),
+    lossReason: text("loss_reason", {
+      enum: [
+        "precio",
+        "no_es_perfil",
+        "sin_presupuesto",
+        "eligio_otro",
+        "nunca_contesto",
+        "otro",
+      ],
+    }),
+    lossNote: text("loss_note"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [
+    index("lse_org_occurred_idx").on(t.organizationId, t.occurredAt),
+    index("lse_lead_occurred_idx").on(t.leadId, t.occurredAt),
+    index("lse_org_kind_occurred_idx").on(
+      t.organizationId,
+      t.toStageKind,
+      t.occurredAt
+    ),
+    // Perder un trato sin motivo es imposible a nivel de BASE, no por
+    // disciplina de cada ruta. La excepción es la siembra de la migración: no
+    // puede inventar un motivo que nadie capturó.
+    check(
+      "lse_loss_reason_ck",
+      sql`${t.toStageKind} <> 'lost' OR ${t.approximate} = true OR ${t.lossReason} IS NOT NULL`
+    ),
   ]
 );
 
@@ -181,7 +309,16 @@ export const conversation = pgTable(
     aiEnabled: boolean("ai_enabled").notNull().default(true),
     handoffAt: timestamp("handoff_at"),
     handoffReason: text("handoff_reason", {
-      enum: ["cliente", "modelo", "error", "ventana"],
+      // 008: manual_reply = el dueño respondió desde la app del teléfono.
+      // hostilidad = el lead se puso agresivo y el agente se retiró.
+      enum: [
+        "cliente",
+        "modelo",
+        "error",
+        "ventana",
+        "hostilidad",
+        "manual_reply",
+      ],
     }),
     lastInboundAt: timestamp("last_inbound_at"),
     lastMessageAt: timestamp("last_message_at"),
@@ -220,6 +357,20 @@ export const message = pgTable(
       .default("pending"),
     error: text("error"),
     aiGenerated: boolean("ai_generated").notNull().default(false),
+    /**
+     * 008 — Origen del saliente: IA (bot), operador del CRM, manual desde la
+     * app de WhatsApp Business del teléfono (echo), o plantilla. En entrantes
+     * queda el default y la UI lo ignora.
+     */
+    origin: text("origin", {
+      enum: ["ai", "operator", "manual", "template"],
+    })
+      .notNull()
+      .default("operator"),
+    /** 008 — Adjunto del mensaje (imagen, doc, ubicación…), si lo hay. */
+    mediaAssetId: text("media_asset_id").references(() => mediaAsset.id, {
+      onDelete: "set null",
+    }),
     waTimestamp: timestamp("wa_timestamp"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
@@ -229,6 +380,55 @@ export const message = pgTable(
       t.conversationId,
       t.createdAt
     ),
+  ]
+);
+
+/**
+ * 008 — Adjuntos: archivo (imagen/video/audio/documento/sticker) copiado al
+ * volumen local (`MEDIA_DIR`) o contenido estructurado (location/contacts) en
+ * `payload`. Meta expira sus archivos (~30 días): el disco propio es la
+ * fuente durable (constitución II: sin S3/R2).
+ */
+export const mediaAsset = pgTable(
+  "media_asset",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    kind: text("kind", {
+      enum: [
+        "image",
+        "video",
+        "audio",
+        "document",
+        "sticker",
+        "location",
+        "contacts",
+      ],
+    }).notNull(),
+    /** media id de Graph (entrantes/salientes subidos); NULL en location/contacts. */
+    waMediaId: text("wa_media_id"),
+    mimeType: text("mime_type"),
+    fileName: text("file_name"),
+    fileSize: integer("file_size"),
+    caption: text("caption"),
+    /** location {latitude, longitude, name?, address?} o contacts (subset). */
+    payload: jsonb("payload"),
+    /** Ruta relativa dentro de MEDIA_DIR; NULL si aún no descargado o no aplica. */
+    storagePath: text("storage_path"),
+    fetchStatus: text("fetch_status", {
+      enum: ["available", "pending", "failed"],
+    })
+      .notNull()
+      .default("pending"),
+    fetchError: text("fetch_error"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (t) => [
+    index("media_asset_org_idx").on(t.organizationId, t.createdAt),
+    index("media_asset_wa_media_idx").on(t.waMediaId),
   ]
 );
 
@@ -293,39 +493,6 @@ export const kbEntry = pgTable(
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
   },
   (t) => [index("kb_org_idx").on(t.organizationId)]
-);
-
-export const agentMediaCategoryEnum = [
-  "comunicados",
-  "catalogos",
-  "ubicacion",
-  "pagos",
-  "soporte_garantia",
-  "promociones",
-  "general",
-] as const;
-
-export type AgentMediaCategory = (typeof agentMediaCategoryEnum)[number];
-
-export const agentMedia = pgTable(
-  "agent_media",
-  {
-    id: text("id").primaryKey(),
-    organizationId: text("organization_id")
-      .notNull()
-      .references(() => organization.id, { onDelete: "cascade" }),
-    category: text("category", { enum: agentMediaCategoryEnum })
-      .notNull()
-      .default("general"),
-    name: text("name").notNull(),
-    url: text("url").notNull(),
-    rule: text("rule").notNull(),
-    filename: text("filename").notNull(),
-    mimeType: text("mime_type").notNull().default("image/jpeg"),
-    createdAt: timestamp("created_at").notNull().defaultNow(),
-    updatedAt: timestamp("updated_at").notNull().defaultNow(),
-  },
-  (t) => [index("agent_media_org_idx").on(t.organizationId)]
 );
 
 export const template = pgTable(

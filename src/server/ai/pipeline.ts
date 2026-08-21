@@ -1,15 +1,16 @@
 import { asc, desc, eq } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
 import { newId } from "@/lib/db/ids";
+import { scoped } from "@/lib/db/tenant";
+import { moveLeadToStage as moveLeadThroughHistory } from "@/server/leads/stage-history";
 import { getEnv, isAiConfigured } from "@/lib/env";
 import { chatJson, type ChatMessage } from "@/lib/ai";
 import { publish } from "@/server/events/bus";
 import { isWindowOpen } from "@/server/inbox/window";
-import { SendError, sendText, sendImage } from "@/server/inbox/send";
+import { SendError, sendText } from "@/server/inbox/send";
 import { AgentAction, degradeAction, resolveStage, type AgentActionType } from "@/server/ai/actions";
 import { matchesHandoffIntent } from "@/server/ai/handoff";
 import { buildAgentSystemPrompt } from "@/server/ai/prompts";
-import { getAgentMediaByOrg } from "@/server/ai/media";
 
 /**
  * Turno del agente (FR-021..FR-025).
@@ -142,12 +143,11 @@ export async function runAgentTurn(conversationId: string): Promise<void> {
     .from(schema.pipelineStage)
     .where(eq(schema.pipelineStage.organizationId, organizationId))
     .orderBy(asc(schema.pipelineStage.position));
-  const media = await getAgentMediaByOrg(organizationId);
 
   const messages: ChatMessage[] = [
     {
       role: "system",
-      content: buildAgentSystemPrompt({ profile, kb, stages, media }),
+      content: buildAgentSystemPrompt({ profile, kb, stages }),
     },
     ...history
       .filter((m) => m.text)
@@ -191,9 +191,6 @@ export async function runAgentTurn(conversationId: string): Promise<void> {
     case "reply":
       await deliverReply(conversation, action.text);
       return;
-    case "send_image":
-      await deliverImageReply(conversation, action.imageUrl, action.caption);
-      return;
     case "update_lead": {
       await appendLeadNote(organizationId, conversation.contactId, action.note);
       if (action.reply) await deliverReply(conversation, action.reply);
@@ -210,34 +207,6 @@ export async function runAgentTurn(conversationId: string): Promise<void> {
 }
 
 type Conversation = typeof schema.conversation.$inferSelect;
-
-/** Entrega imagen: envío real o persistencia sandbox (is_test). */
-async function deliverImageReply(
-  conversation: Conversation,
-  imageUrl: string,
-  caption?: string
-): Promise<void> {
-  if (conversation.isTest) {
-    const textContent = caption ? `[IMAGEN: ${imageUrl}]\n${caption}` : `[IMAGEN: ${imageUrl}]`;
-    await persistTestOutbound(conversation, textContent);
-    return;
-  }
-  try {
-    await sendImage({
-      conversationId: conversation.id,
-      organizationId: conversation.organizationId,
-      imageUrl,
-      caption,
-      aiGenerated: true,
-    });
-  } catch (err) {
-    if (err instanceof SendError && err.code === "window_closed") {
-      await applyHandoff(conversation.id, conversation.organizationId, "ventana");
-      return;
-    }
-    throw err;
-  }
-}
 
 /** Entrega la respuesta: envío real o persistencia sandbox (is_test). */
 async function deliverReply(
@@ -279,6 +248,7 @@ async function persistTestOutbound(
     text,
     status: "sent",
     aiGenerated: true,
+    origin: "ai",
   });
   await db
     .update(schema.conversation)
@@ -312,10 +282,33 @@ async function moveLeadToStage(
   stageId: string
 ): Promise<void> {
   const db = getDb();
-  await db
-    .update(schema.lead)
-    .set({ stageId, updatedAt: new Date(), lastActivityAt: new Date() })
-    .where(eq(schema.lead.contactId, contactId));
+  const rows = await db
+    .select({ id: schema.lead.id })
+    .from(schema.lead)
+    .where(
+      scoped(
+        schema.lead.organizationId,
+        organizationId,
+        eq(schema.lead.contactId, contactId)
+      )
+    )
+    .limit(1);
+  const leadId = rows[0]?.id;
+  if (!leadId) return;
+
+  // Por la puerta única: el agente mueve tarjetas igual que el dueño, y su
+  // movimiento tiene que quedar en la bitácora o el embudo mentirá sobre
+  // quién hizo avanzar cada lead.
+  await moveLeadThroughHistory({
+    organizationId,
+    leadId,
+    toStageId: stageId,
+    source: "bot",
+    extra: { lastActivityAt: new Date() },
+    // El agente no clasifica pérdidas: si su etapa destino resultara ser la
+    // perdida, la puerta lo rechaza y el lead se queda donde está — mejor eso
+    // que un motivo inventado.
+  });
 }
 
 async function appendLeadNote(

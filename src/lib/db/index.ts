@@ -32,4 +32,3 @@ export function getDb() {
 }
 
 export { schema };
-export { agentMediaCategoryEnum, type AgentMediaCategory } from "./schema";

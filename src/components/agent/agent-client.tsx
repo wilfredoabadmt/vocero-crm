@@ -8,7 +8,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { MediaManagerSection } from "@/components/agent/media-manager";
 
 type Profile = {
   enabled: boolean;
@@ -73,7 +72,7 @@ export function AgentClient() {
 
   return (
     <div className="h-full overflow-y-auto">
-      <header className="flex items-center justify-between border-b px-6 py-4">
+      <header className="flex flex-wrap items-center justify-between gap-2 border-b px-4 py-3 sm:px-6 sm:py-4">
         <h2 className="font-semibold">Agente de IA</h2>
         <div className="flex items-center gap-3">
           {saved && <span className="text-xs text-primary">Guardado ✓</span>}
@@ -91,7 +90,7 @@ export function AgentClient() {
             }`}
           >
             <span
-              className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-transform ${
+              className={`absolute top-0.5 h-5 w-5 rounded-full bg-knob transition-transform ${
                 profile.enabled ? "translate-x-5" : "translate-x-0.5"
               }`}
             />
@@ -100,7 +99,7 @@ export function AgentClient() {
       </header>
 
       {!aiConfigured && (
-        <div className="mx-6 mt-6 rounded-lg border border-brand-soft bg-brand-tint p-6 text-center">
+        <div className="mx-4 mt-4 rounded-lg border border-brand-soft bg-brand-tint p-5 text-center sm:mx-6 sm:mt-6 sm:p-6">
           <Sparkles className="mx-auto mb-2 h-8 w-8 text-primary" />
           <p className="font-medium">Configura tu proveedor de IA para activar el agente</p>
           <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">
@@ -112,10 +111,9 @@ export function AgentClient() {
         </div>
       )}
 
-      <div className="grid gap-6 p-6 lg:grid-cols-2">
+      <div className="grid gap-4 p-4 sm:gap-6 sm:p-6 lg:grid-cols-2">
         <ProfileSection profile={profile} onSave={saveProfile} />
         <KbSection entries={entries} kbSize={kbSize} onChanged={() => void refetch()} />
-        <MediaManagerSection />
       </div>
     </div>
   );
@@ -251,7 +249,7 @@ function KbSection({
           )}
         </div>
         {kbSize?.warning && (
-          <p className="text-xs text-[#8a6d3b]">
+          <p className="text-xs text-warning-text">
             El conocimiento se acerca al límite del contexto del modelo (v1 lo
             inyecta completo en cada turno). Considera depurar entradas.
           </p>

@@ -145,7 +145,7 @@ export function LabClient() {
         onLaunch={() => void launch()}
         disabled={false}
       />
-      {error && <p className="px-6 pt-3 text-sm text-destructive">{error}</p>}
+      {error && <p className="px-4 pt-3 text-sm text-destructive sm:px-6">{error}</p>}
 
       {running && progress && (
         <div className="mx-6 mt-4 rounded-lg border bg-card p-4">
@@ -164,7 +164,7 @@ export function LabClient() {
         </div>
       )}
 
-      <div className="grid gap-6 p-6 lg:grid-cols-[280px_1fr]">
+      <div className="grid gap-4 p-4 sm:gap-6 sm:p-6 lg:grid-cols-[280px_1fr]">
         <HistoryList
           runs={runs}
           selectedRunId={selectedRunId}
@@ -196,7 +196,7 @@ function Header({
   disabled: boolean;
 }) {
   return (
-    <header className="flex items-center justify-between border-b px-6 py-4">
+    <header className="flex flex-wrap items-center justify-between gap-2 border-b px-4 py-3 sm:px-6 sm:py-4">
       <div>
         <h2 className="flex items-center gap-2 font-semibold">
           <FlaskConical className="h-4 w-4 text-primary" /> Laboratorio
@@ -314,7 +314,7 @@ function Report({
               ))}
             </div>
             {cases.some((c) => c.status === "judge_failed") && (
-              <p className="mt-3 text-xs text-[#8a6d3b]">
+              <p className="mt-3 text-xs text-warning-text">
                 {cases.filter((c) => c.status === "judge_failed").length} caso(s) sin
                 veredicto (el juez no respondió válido); excluidos del score.
               </p>
@@ -337,7 +337,7 @@ function CaseCard({ testCase, onApplied }: { testCase: Case; onApplied: () => vo
     c.veredicto === "verde" ? (
       <CheckCircle2 className="h-4 w-4 text-success" />
     ) : c.veredicto === "amarillo" ? (
-      <AlertTriangle className="h-4 w-4 text-[#8a6d3b]" />
+      <AlertTriangle className="h-4 w-4 text-warning-text" />
     ) : c.veredicto === "rojo" ? (
       <XCircle className="h-4 w-4 text-destructive" />
     ) : (
@@ -378,7 +378,7 @@ function CaseCard({ testCase, onApplied }: { testCase: Case; onApplied: () => vo
                 <p key={i}>
                   <span
                     className={
-                      t.role === "cliente" ? "text-[#5b7291]" : "text-primary"
+                      t.role === "cliente" ? "text-info" : "text-primary"
                     }
                   >
                     {t.role === "cliente" ? "Cliente" : "Agente"}:
@@ -427,7 +427,7 @@ function HallazgoCard({
   }
 
   return (
-    <div className="rounded-md border border-[#ece2cf] bg-[#faf7f0] p-3">
+    <div className="rounded-md border border-warning-soft bg-warning-tint p-3">
       <div className="flex items-center justify-between">
         <Badge variant="warning">{TIPO_LABELS[hallazgo.tipo]}</Badge>
         {hallazgo.sugerencia && !applied && !editing && (

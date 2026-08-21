@@ -26,24 +26,71 @@ export async function deliverToWebhook(payload: unknown): Promise<Response> {
   return fetch(url, { method: "POST", headers, body: raw });
 }
 
+/** 008 — Campos de adjunto que aceptan los payloads simulados. */
+type MockMediaInput = {
+  /** media id de Graph simulado (servible por wa-mock/media-file). */
+  mediaId?: string;
+  mimeType?: string;
+  caption?: string;
+  filename?: string;
+  location?: Record<string, unknown>;
+};
+
+const MOCK_BINARY_TYPES = new Set(["image", "video", "audio", "document", "sticker"]);
+
+function applyMockContent(
+  message: Record<string, unknown>,
+  type: string,
+  input: { text?: string } & MockMediaInput
+): void {
+  if (type === "text") {
+    message.text = { body: input.text ?? "hola" };
+  } else if (type === "location") {
+    message.location = input.location ?? {
+      latitude: 21.019,
+      longitude: -101.257,
+      name: "Oficina",
+    };
+  } else if (MOCK_BINARY_TYPES.has(type)) {
+    const media: Record<string, unknown> = {
+      id: input.mediaId ?? `mockmedia_${nextN()}`,
+      mime_type:
+        input.mimeType ?? (type === "audio" ? "audio/ogg" : "image/jpeg"),
+    };
+    if (input.caption) media.caption = input.caption;
+    if (input.filename) media.filename = input.filename;
+    message[type] = media;
+  }
+}
+
 export function buildInboundPayload(input: {
   wabaId: string;
   phoneNumberId: string;
-  from: string;
+  /** Teléfono del remitente. Omite y usa `fromUserId` para simular BSUID (003). */
+  from?: string;
+  /** BSUID del remitente — puede venir solo o junto a `from`. */
+  fromUserId?: string;
   name?: string;
   type?: string;
   text?: string;
   waMessageId?: string;
   timestamp?: number;
-}) {
+} & MockMediaInput) {
   const type = input.type ?? "text";
   const message: Record<string, unknown> = {
-    from: input.from,
     id: input.waMessageId ?? `wamid.mock.in.${nextN()}`,
     timestamp: String(input.timestamp ?? Math.floor(Date.now() / 1000)),
     type,
   };
-  if (type === "text") message.text = { body: input.text ?? "hola" };
+  if (input.from) message.from = input.from;
+  if (input.fromUserId) message.from_user_id = input.fromUserId;
+  applyMockContent(message, type, input);
+
+  const contactEntry: Record<string, unknown> = {
+    profile: { name: input.name ?? "Cliente" },
+  };
+  if (input.from) contactEntry.wa_id = input.from;
+  if (input.fromUserId) contactEntry.user_id = input.fromUserId;
 
   return {
     object: "whatsapp_business_account",
@@ -59,13 +106,61 @@ export function buildInboundPayload(input: {
                 display_phone_number: "5215500000000",
                 phone_number_id: input.phoneNumberId,
               },
-              contacts: [
-                {
-                  profile: { name: input.name ?? "Cliente" },
-                  wa_id: input.from,
-                },
-              ],
+              contacts: [contactEntry],
               messages: [message],
+            },
+          },
+        ],
+      },
+    ],
+  };
+}
+
+/**
+ * 008 — Payload de echo de coexistence (`smb_message_echoes`): un mensaje que
+ * el dueño mandó A MANO desde la app de WhatsApp Business del teléfono.
+ */
+export function buildEchoPayload(input: {
+  wabaId: string;
+  phoneNumberId: string;
+  /** wa_id del LEAD destinatario. */
+  to: string;
+  /** Número del negocio (remitente del echo). */
+  from?: string;
+  type?: string;
+  text?: string;
+  waMessageId?: string;
+  timestamp?: number;
+  /** Variante defensiva: entregar bajo la clave `messages` en vez de `message_echoes`. */
+  useMessagesKey?: boolean;
+} & MockMediaInput) {
+  const type = input.type ?? "text";
+  const message: Record<string, unknown> = {
+    id: input.waMessageId ?? `wamid.mock.echo.${nextN()}`,
+    timestamp: String(input.timestamp ?? Math.floor(Date.now() / 1000)),
+    type,
+    from: input.from ?? "5215500000000",
+    to: input.to,
+  };
+  applyMockContent(message, type, input);
+
+  return {
+    object: "whatsapp_business_account",
+    entry: [
+      {
+        id: input.wabaId,
+        changes: [
+          {
+            field: "smb_message_echoes",
+            value: {
+              messaging_product: "whatsapp",
+              metadata: {
+                display_phone_number: "5215500000000",
+                phone_number_id: input.phoneNumberId,
+              },
+              ...(input.useMessagesKey
+                ? { messages: [message] }
+                : { message_echoes: [message] }),
             },
           },
         ],
@@ -80,6 +175,9 @@ export function buildStatusPayload(input: {
   waMessageId: string;
   status: string;
   recipientId?: string;
+  /** Meta adjunta `errors[]` en los `failed` (ej. 130472 del 2026-08-05). */
+  errorCode?: number;
+  errorMessage?: string;
 }) {
   return {
     object: "whatsapp_business_account",
@@ -101,6 +199,17 @@ export function buildStatusPayload(input: {
                   status: input.status,
                   timestamp: String(Math.floor(Date.now() / 1000)),
                   recipient_id: input.recipientId ?? "5215511111111",
+                  ...(input.errorCode != null
+                    ? {
+                        errors: [
+                          {
+                            code: input.errorCode,
+                            title: input.errorMessage ?? "Error de envío",
+                            message: input.errorMessage ?? "Error de envío",
+                          },
+                        ],
+                      }
+                    : {}),
                 },
               ],
             },

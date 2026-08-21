@@ -18,50 +18,14 @@ export function renderKb(entries: KbEntry[]): string {
     .join("\n\n");
 }
 
-type AgentMediaItem = typeof schema.agentMedia.$inferSelect;
-
-export function renderMediaCatalog(mediaItems?: AgentMediaItem[]): string {
-  if (!mediaItems || mediaItems.length === 0) return "(sin catálogo de imágenes registrado)";
-
-  const grouped: Record<string, AgentMediaItem[]> = {};
-  for (const item of mediaItems) {
-    const cat = item.category ?? "general";
-    if (!grouped[cat]) grouped[cat] = [];
-    grouped[cat].push(item);
-  }
-
-  const categoryLabels: Record<string, string> = {
-    comunicados: "COMUNICADOS OFICIALES Y AVISOS",
-    catalogos: "CATÁLOGOS Y PRECIOS",
-    ubicacion: "UBICACIÓN Y MAPAS DE ATENCIÓN",
-    pagos: "DATOS DE PAGO Y QR",
-    soporte_garantia: "SOPORTE Y GARANTÍAS",
-    promociones: "PROMOCIONES Y OFERTAS",
-    general: "RECURSOS GENERALES",
-  };
-
-  return Object.entries(grouped)
-    .map(([catKey, items]) => {
-      const label = categoryLabels[catKey] ?? catKey.toUpperCase();
-      const itemList = items
-        .map(
-          (m) =>
-            `- Nombre: "${m.name}" | URL: ${m.url} | Regla de entrega: ${m.rule}`
-        )
-        .join("\n");
-      return `[${label}]\n${itemList}`;
-    })
-    .join("\n\n");
-}
-
 /**
- * System prompt del agente (v1: inyecta el KB completo y el catálogo de imágenes).
+ * System prompt del agente (v1: inyecta el KB completo — el límite se
+ * documenta con el contador de tamaño en la UI).
  */
 export function buildAgentSystemPrompt(input: {
   profile: AgentProfile;
   kb: KbEntry[];
   stages: { name: string }[];
-  media?: AgentMediaItem[];
 }): string {
   const { profile } = input;
   const stageNames = input.stages.map((s) => s.name).join(" | ");
@@ -74,7 +38,6 @@ export function buildAgentSystemPrompt(input: {
       : null,
     profile.greeting ? `Saludo sugerido para conversaciones nuevas: ${profile.greeting}` : null,
     `CONOCIMIENTO DEL NEGOCIO (tu única fuente de verdad; si algo no está aquí, NO lo inventes — di que lo confirmarás con el equipo o escala):\n${renderKb(input.kb)}`,
-    `CATÁLOGO DE IMÁGENES Y RECURSOS OFICIALES ORGANIZADOS POR CATEGORÍA:\n${renderMediaCatalog(input.media)}`,
     `Etapas del pipeline disponibles: ${stageNames}`,
     [
       "En cada turno respondes ÚNICAMENTE un objeto JSON con UNA acción:",
@@ -82,11 +45,8 @@ export function buildAgentSystemPrompt(input: {
       '- {"action":"reply","text":"..."} — responder al cliente.',
       '- {"action":"update_lead","note":"...","reply":"..."} — guardar una nota del lead (reply opcional).',
       '- {"action":"move_stage","stage":"<nombre exacto de etapa>","reply":"..."} — mover el lead (reply opcional).',
-      '- {"action":"send_image","imageUrl":"<URL exacta de la lista>","caption":"..."} — enviar una imagen del catálogo con leyenda introductoria opcional.',
       '- {"action":"handoff","reason":"...","farewell":"..."} — escalar a un humano (farewell opcional para despedirte).',
       "Reglas duras:",
-      "- Si la consulta del cliente cumple exactamente con la Regla de entrega de alguna imagen (comunicados, catálogo, ubicación, pagos, etc.), responde con la acción send_image usando la imageUrl correspondiente.",
-      "- NUNCA inventes ni alteres URLs de imágenes: usa estrictamente las URLs del catálogo oficial.",
       "- Si el cliente pide hablar con una persona/humano/asesor → handoff.",
       "- Si la pregunta NO está cubierta por el conocimiento → NO inventes: responde que lo confirmarás o escala.",
       "- Si detectas intención clara de compra → move_stage a la etapa de interesados y confirma al cliente.",

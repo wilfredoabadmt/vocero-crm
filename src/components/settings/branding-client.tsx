@@ -3,7 +3,9 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ACCENT_PRESETS, isValidHex, resolveAccentSet, type Branding } from "@/lib/branding";
+import { CURRENCIES, DEFAULT_CURRENCY, type Currency } from "@/lib/money";
 import { cn } from "@/lib/utils";
+import { useResolvedTheme } from "@/components/use-theme";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -11,8 +13,10 @@ import { Label } from "@/components/ui/label";
 
 export function BrandingClient() {
   const router = useRouter();
+  const mode = useResolvedTheme();
   const [name, setName] = useState("");
   const [accent, setAccent] = useState("#3f5972");
+  const [currency, setCurrency] = useState<Currency>(DEFAULT_CURRENCY);
   const [loaded, setLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -25,6 +29,7 @@ export function BrandingClient() {
         if (d) {
           setName(d.branding.name);
           setAccent(d.branding.accent);
+          if (d.branding.currency) setCurrency(d.branding.currency);
         }
         setLoaded(true);
       })
@@ -32,7 +37,9 @@ export function BrandingClient() {
   }, []);
 
   const isPreset = accent.toLowerCase() in ACCENT_PRESETS;
-  const previewSet = resolveAccentSet(accent);
+  // La vista previa muestra el acento tal como se verá en el tema activo: los
+  // presets están pensados para fondo claro y en oscuro se aclaran.
+  const previewSet = resolveAccentSet(accent, mode);
 
   async function save() {
     setSaving(true);
@@ -41,7 +48,7 @@ export function BrandingClient() {
     const res = await fetch("/api/settings/branding", {
       method: "PUT",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ name: name.trim(), accent }),
+      body: JSON.stringify({ name: name.trim(), accent, currency }),
     }).catch(() => null);
     setSaving(false);
     if (!res?.ok) {
@@ -81,6 +88,26 @@ export function BrandingClient() {
             />
           </div>
 
+          <div className="space-y-1.5">
+            <Label htmlFor="brand-currency">Moneda del negocio</Label>
+            <select
+              id="brand-currency"
+              value={currency}
+              onChange={(e) => setCurrency(e.target.value as Currency)}
+              className="h-9 max-w-xs rounded-md border border-input bg-card px-2 text-sm"
+            >
+              {CURRENCIES.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-text-3">
+              Es la única que el Pipeline suma. Los montos capturados en otra
+              moneda se muestran, pero quedan fuera del total de su columna.
+            </p>
+          </div>
+
           <div className="space-y-2">
             <Label>Color de acento</Label>
             <div className="flex flex-wrap items-center gap-2">
@@ -99,7 +126,7 @@ export function BrandingClient() {
                 >
                   <span
                     className="h-4 w-4 rounded-full"
-                    style={{ background: hex }}
+                    style={{ background: resolveAccentSet(hex, mode).accent }}
                   />
                   {preset.label}
                 </button>
@@ -129,8 +156,8 @@ export function BrandingClient() {
           <div className="rounded-md border p-4" style={{ background: previewSet.tint }}>
             <div className="flex items-center gap-2.5">
               <span
-                className="flex h-[30px] w-[30px] items-center justify-center rounded-sm text-[15px] font-bold text-white"
-                style={{ background: previewSet.accent }}
+                className="flex h-[30px] w-[30px] items-center justify-center rounded-sm text-[15px] font-bold"
+                style={{ background: previewSet.accent, color: previewSet.fg }}
               >
                 {(name.trim() || "Vocero").charAt(0).toUpperCase()}
               </span>
@@ -142,8 +169,8 @@ export function BrandingClient() {
               </span>
               <span className="flex-1" />
               <span
-                className="rounded-md px-3 py-1.5 text-xs font-medium text-white"
-                style={{ background: previewSet.accent }}
+                className="rounded-md px-3 py-1.5 text-xs font-medium"
+                style={{ background: previewSet.accent, color: previewSet.fg }}
               >
                 Botón de ejemplo
               </span>

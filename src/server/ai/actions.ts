@@ -23,11 +23,6 @@ export const AgentAction = z.discriminatedUnion("action", [
     reason: z.string().optional(),
     farewell: z.string().optional(),
   }),
-  z.object({
-    action: z.literal("send_image"),
-    imageUrl: z.string().url(),
-    caption: z.string().optional(),
-  }),
 ]);
 
 export type AgentActionType = z.infer<typeof AgentAction>;

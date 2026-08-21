@@ -29,13 +29,11 @@ const envSchema = z.object({
   ALLOW_SIGNUP: z.string().optional(),
   AGENT_COALESCE_MS: z.coerce.number().int().min(0).default(6000),
   WA_MOCK_ENABLED: z.string().optional(),
-  CLOUDFLARE_R2_ACCOUNT_ID: z.string().optional(),
-  CLOUDFLARE_R2_BUCKET_NAME: z.string().optional(),
-  CLOUDFLARE_R2_API_TOKEN: z.string().optional(),
-  CLOUDFLARE_R2_ACCESS_KEY_ID: z.string().optional(),
-  CLOUDFLARE_R2_SECRET_ACCESS_KEY: z.string().optional(),
-  CLOUDFLARE_R2_ENDPOINT: z.string().optional(),
-  CLOUDFLARE_R2_PUBLIC_URL: z.string().optional(),
+  // API key de un cerebro externo que conduzca la conversación por /api/bot/*.
+  // Sin ella, toda esa superficie responde 401.
+  BOT_API_KEY: z.string().optional(),
+  // 008: volumen local de adjuntos (constitución II: sin S3/R2).
+  MEDIA_DIR: z.string().default("./.dev-media"),
   NODE_ENV: z.string().default("development"),
 });
 
