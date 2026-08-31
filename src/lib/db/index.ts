@@ -32,3 +32,5 @@ export function getDb() {
 }
 
 export { schema };
+export type { AgentMediaCategory } from "./schema";
+export { agentMediaCategoryEnum } from "./schema";

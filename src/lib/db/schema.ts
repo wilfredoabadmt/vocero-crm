@@ -976,3 +976,36 @@ export const capiSettings = pgTable(
   },
   (t) => [uniqueIndex("capi_settings_org_uq").on(t.organizationId)]
 );
+
+export const agentMediaCategoryEnum = [
+  "comunicados",
+  "catalogos",
+  "ubicacion",
+  "pagos",
+  "soporte_garantia",
+  "promociones",
+  "general",
+] as const;
+
+export type AgentMediaCategory = (typeof agentMediaCategoryEnum)[number];
+
+export const agentMedia = pgTable(
+  "agent_media",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    category: text("category", { enum: agentMediaCategoryEnum })
+      .notNull()
+      .default("general"),
+    name: text("name").notNull(),
+    url: text("url").notNull(),
+    rule: text("rule").notNull(),
+    filename: text("filename").notNull(),
+    mimeType: text("mime_type").notNull().default("image/jpeg"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (t) => [index("agent_media_org_idx").on(t.organizationId)]
+);
