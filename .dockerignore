@@ -10,6 +10,11 @@ docs
 specs
 memory
 tests
+e2e
+port-agente-isp
+saas-toi-agent
+server
+web
 Dockerfile
 docker-compose*.yml
 Caddyfile
