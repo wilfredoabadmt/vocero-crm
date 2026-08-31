@@ -38,6 +38,7 @@
     "exclude":  [
                     "node_modules",
                     "scripts",
-                    "e2e"
+                    "e2e",
+                    "port-agente-isp"
                 ]
 }
