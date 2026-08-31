@@ -1,51 +1,53 @@
 <!--
 SYNC IMPACT REPORT
 ==================
-Versión: 1.2.0 → 1.3.0
+Versión: 1.3.0 → 1.4.0
 
 Cambios:
-  - Principio VI "Specs Antes de Código" → EXPANDIDO: se definen tres carriles
-    (ciclo completo / carril ligero / exento) con un criterio objetivo para
-    elegir entre ellos —si toca el modelo de datos o un contrato publicado—, se
-    fija el contenido mínimo del `spec.md` del carril ligero, y se añaden dos
-    reglas: subir de carril al descubrir una migración a mitad de camino, y
-    marcar como tal todo spec escrito a posteriori.
-  - Sección "Flujo de Desarrollo y Puertas de Calidad" → ALINEADA con los carriles:
-    el orden del flujo pasa a depender del carril, y el Constitution Check se
-    declara obligatorio en AMBOS carriles (en el plan si es ciclo completo, en el
-    propio `spec.md` si es carril ligero). Sin esta aclaración el carril ligero
-    habría dejado la puerta constitucional sin sitio donde ocurrir, que sería un
-    debilitamiento —y por tanto un MAJOR—, no una expansión.
-  - Principios I, II, III, IV, V, VII, VIII y IX: íntegros (sin cambio).
+  - Principio II "Soberanía / Self-Hosted" → EXPANDIDO: la lista cerrada de
+    dependencias de runtime gana una tercera categoría, **conectores
+    opcionales**, admisible SOLO bajo cinco condiciones (apagados por defecto
+    tras una bandera de despliegue, aislados tras adaptador dedicado con
+    contrato público, instancia completa sin ellos con degradación definida,
+    credenciales cifradas del propio negocio, y verificables en CI apagados y
+    encendidos). La frase de prohibición se acota: de "PROHIBIDO en v1 … y
+    servicios de Google" a "PROHIBIDO como dependencia del núcleo", con la vía
+    única del conector opcional para servicios de terceros.
+  - Principios I, III, IV, V, VI, VII, VIII y IX: íntegros (sin cambio).
+  - "Restricciones de Plataforma y Seguridad": sin cambio — su regla de
+    aislamiento tras adaptadores dedicados ya cubre a los conectores.
   - Governance: sin cambio.
 
-Bump: MINOR (1.2.0 → 1.3.0) — expansión material de un principio; no elimina ni
-redefine nada de forma incompatible. Lo que antes cumplía el ciclo completo lo
-sigue cumpliendo.
+Bump: MINOR (1.3.0 → 1.4.0) — expansión material de un principio; no elimina ni
+redefine nada de forma incompatible: una instancia default sigue cumpliendo
+exactamente la promesa vigente ("un VPS, un dominio, credenciales de Meta y un
+token de OpenRouter. Nada más").
 
 Motivación:
-  El carril ligero NO es una práctica nueva: es la que el repositorio ya usa.
-  `001-vocero-core` llevó el ciclo completo (12 archivos, ~14.600 palabras)
-  porque era el producto entero; `002-diseno-atlas` se quedó en spec + plan
-  (~1.290 palabras) y `003-paridad-inbox`, en un solo `spec.md` (565 palabras).
-  Esa gradación funcionó, pero nunca se escribió — y sin el escalón intermedio
-  documentado, el siguiente paso hacia abajo acabó siendo ninguno: las features
-  entregadas entre la 003 y la versión 1.2.0 de la app se implementaron sin spec.
-  Esta enmienda ratifica la práctica existente y le pone criterio.
+  El canal de Instagram (014 / ADR-001) entró como integración opcional detrás
+  de CHANNELS sin tocar este principio, porque es la misma Meta Graph API del
+  canal permitido. El motor de agendamiento (feature 015) necesita Zoom y
+  Google — proveedores nuevos — y el principio no daba ninguna vía, ni siquiera
+  apagados por defecto; la única salida habría sido "cada quien su fork", que
+  ADR-001 ya demostró insostenible (la rama 004-motor-agenda quedó irrescatable
+  en 26 días: 76 commits atrás y migración colisionada). La soberanía que el
+  principio protege no se toca: el costo lo paga únicamente la instancia que
+  enciende la bandera y pega SUS credenciales, y la condición 5 lo vuelve
+  verificable en vez de prometido.
+  Propuesta por escrito y ratificación del responsable (2026-08-26):
+  specs/015-motor-agenda-universal/enmienda-constitucional.md.
 
 Plantillas dependientes:
-  - .specify/templates/spec-template.md — ✅ compatible. Sus secciones
-    obligatorias (User Scenarios & Testing, Requirements, Success Criteria)
-    cubren de sobra el mínimo del carril ligero; en ese carril se rellenan solo
-    ellas y se omiten las opcionales.
-  - .specify/templates/plan-template.md — ✅ compatible (solo aplica al ciclo
-    completo; su Constitution Check se evalúa contra esta versión).
-  - .specify/templates/tasks-template.md — ✅ compatible (ídem).
-  - CLAUDE.md — ⚠ conviene reflejar los tres carriles cuando se actualice.
+  - .specify/templates/spec-template.md — ✅ compatible (sin cambios).
+  - .specify/templates/plan-template.md — ✅ compatible; su Constitution Check
+    se evalúa contra esta versión (un conector externo pasa el gate si y solo
+    si cumple las cinco condiciones).
+  - .specify/templates/tasks-template.md — ✅ compatible.
+  - CLAUDE.md — ✅ actualizado en este mismo cambio (regla de Soberanía).
 
 TODOs diferidos:
-  - Deuda documental: las features entregadas entre `003` y la app 1.2.0 siguen
-    sin spec. Se pagan a posteriori y marcadas como tales (ver Principio VI).
+  - Deuda documental heredada de la 1.3.0 (features entre `003` y la app 1.2.0
+    sin spec): sigue igual; esta enmienda no la toca.
 -->
 
 # Vocero CRM Constitution
@@ -86,9 +88,28 @@ dependencias externas en runtime es CERRADA:
   2. **El proveedor LLM**, opcional, accedido EXCLUSIVAMENTE a través del adaptador
      OpenRouter-compatible (`OPENROUTER_BASE_URL` / `OPENROUTER_MODEL`). Sin token
      configurado, el producto funciona como CRM sin agente de IA.
-- **PROHIBIDO en v1**: almacenamiento de objetos externo (S3/R2), servicios de
-  email, Stripe u otro billing, y servicios de Google. Cualquier feature que los
-  requiera queda fuera del alcance de v1.
+  3. **Conectores opcionales**, únicamente bajo TODAS estas condiciones:
+     1. **Apagados por defecto**: se encienden con una bandera de despliegue
+        explícita (patrón ADR-001); una instancia default no los carga, no los
+        menciona y no pide sus credenciales.
+     2. **Aislados tras un adaptador dedicado** con contrato público estable,
+        como el cliente Graph API y el adaptador LLM; el dominio no conoce al
+        proveedor.
+     3. **La instancia funciona completa sin ellos**: existe un camino sin
+        dependencia externa para la misma capacidad (p. ej. el conector
+        `enlace-fijo` de la agenda), y el fallo del proveedor degrada de forma
+        definida — NUNCA bloquea ni pierde la operación core (la cita se crea
+        con link pendiente; el mensaje se responde; el dato se guarda).
+     4. **Credenciales del propio negocio, cifradas en reposo** (Principio I):
+        cada instancia habla con SU cuenta del proveedor; jamás credenciales de
+        una plataforma central.
+     5. **Verificables apagados y encendidos**: la CI ejercita ambas
+        configuraciones y cada conector externo tiene mock con camino infeliz.
+- **PROHIBIDO como dependencia del núcleo** (todo lo que el producto necesite
+  para operar sin banderas): almacenamiento de objetos externo (S3/R2),
+  servicios de email, billing (Stripe u otro) y cualquier servicio de terceros.
+  Un servicio de terceros solo puede entrar como conector opcional bajo las
+  cinco condiciones anteriores.
 - El instalador solo necesita: un VPS con Coolify o Docker, un dominio, credenciales
   de Meta y (opcional) un token de OpenRouter. Nada más.
 - Las funciones core —autenticación y base de datos— corren self-hosted (Better
@@ -313,4 +334,4 @@ práctica, convención o preferencia; ante un conflicto, gana la constitución.
 - **Propagación**: al enmendar la constitución se revisan y, si procede, se actualizan
   las plantillas dependientes (plan, spec, tasks).
 
-**Version**: 1.3.0 | **Ratified**: 2026-07-09 | **Last Amended**: 2026-08-17
+**Version**: 1.4.0 | **Ratified**: 2026-07-09 | **Last Amended**: 2026-08-26

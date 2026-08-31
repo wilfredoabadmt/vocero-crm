@@ -1,7 +1,11 @@
 /** DTOs que viajan por la API interna (lado cliente). */
 
+import type { Channel } from "@/lib/channels";
+
 export type ConversationDto = {
   id: string;
+  /** 014: canal de la conversacion, para el distintivo de la bandeja. */
+  channel: Channel;
   contact: { id: string; name: string; phone: string | null };
   stageName: string | null;
   aiEnabled: boolean;

@@ -29,9 +29,26 @@ export type MockTemplate = {
   components?: unknown[];
 };
 
+/**
+ * 016 — Un evento de Conversions API que el CRM le mandó al mock. El self-test
+ * lo inspecciona para verificar la FORMA del payload: el modo de fallar de ese
+ * endpoint es un 200 con `events_received: 0`, donde un campo mal puesto se ve
+ * idéntico a uno bien puesto.
+ */
+export type CapiMockEvent = {
+  n: number;
+  datasetId: string;
+  eventName: string;
+  ctwaClid: string | null;
+  customData: Record<string, unknown> | null;
+  body: unknown;
+  at: string;
+};
+
 type WaMockState = {
   outbox: OutboxEntry[];
   templates: MockTemplate[];
+  capiEvents: CapiMockEvent[];
   counter: number;
 };
 
@@ -39,13 +56,23 @@ const globalForMock = globalThis as unknown as { __waMockState?: WaMockState };
 
 export function getWaMockState(): WaMockState {
   if (!globalForMock.__waMockState) {
-    globalForMock.__waMockState = { outbox: [], templates: [], counter: 0 };
+    globalForMock.__waMockState = {
+      outbox: [],
+      templates: [],
+      capiEvents: [],
+      counter: 0,
+    };
   }
   return globalForMock.__waMockState;
 }
 
 export function resetWaMockState(): void {
-  globalForMock.__waMockState = { outbox: [], templates: [], counter: 0 };
+  globalForMock.__waMockState = {
+    outbox: [],
+    templates: [],
+    capiEvents: [],
+    counter: 0,
+  };
 }
 
 export function nextN(): number {

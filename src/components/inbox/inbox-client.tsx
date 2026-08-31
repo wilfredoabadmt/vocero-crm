@@ -6,6 +6,8 @@ import { ChevronLeft, PanelRight } from "lucide-react";
 import { cn, formatPhone } from "@/lib/utils";
 import { ContactAvatar } from "@/components/avatar";
 import type { ConversationDto, MessageDto } from "@/lib/types";
+import { CHANNEL_LABEL, type Channel } from "@/lib/channels";
+import { ChannelBadge } from "@/components/channel-badge";
 import { useEvents } from "@/components/use-events";
 import { ConversationList } from "./conversation-list";
 import { MessageThread } from "./message-thread";
@@ -33,7 +35,8 @@ const PANEL_MEDIA_QUERY = "(min-width: 1280px)";
 const isWideEnoughForPanel = () =>
   typeof window !== "undefined" && window.matchMedia(PANEL_MEDIA_QUERY).matches;
 
-export function InboxClient() {
+export function InboxClient({ channels }: { channels: readonly Channel[] }) {
+  const multiChannel = channels.length > 1;
   const [conversations, setConversations] = useState<ConversationDto[] | null>(
     null
   );
@@ -279,6 +282,7 @@ export function InboxClient() {
       >
         <ConversationList
           conversations={conversations}
+          channels={channels}
           selectedId={selectedId}
           onSelect={select}
           onSeeded={() => void refetchConversations()}
@@ -309,8 +313,9 @@ export function InboxClient() {
                   size="md"
                 />
                 <div className="min-w-0">
-                  <p className="truncate text-[15px] font-[650] leading-tight">
-                    {selected.contact.name}
+                  <p className="flex min-w-0 items-center gap-1.5 text-[15px] font-[650] leading-tight">
+                    {multiChannel && <ChannelBadge channel={selected.channel} />}
+                    <span className="truncate">{selected.contact.name}</span>
                   </p>
                   <p
                     className={
@@ -321,7 +326,11 @@ export function InboxClient() {
                   >
                     {selected.windowOpen
                       ? "ventana abierta"
-                      : formatPhone(selected.contact.phone)}
+                      : selected.contact.phone
+                        ? formatPhone(selected.contact.phone)
+                        : // Instagram no tiene teléfono: decir "Sin teléfono"
+                          // sería contestar una pregunta que nadie hizo.
+                          CHANNEL_LABEL[selected.channel]}
                   </p>
                 </div>
               </div>

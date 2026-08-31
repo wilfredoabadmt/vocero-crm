@@ -8,9 +8,16 @@ import { chatJson, type ChatMessage } from "@/lib/ai";
 import { publish } from "@/server/events/bus";
 import { isWindowOpen } from "@/server/inbox/window";
 import { SendError, sendText } from "@/server/inbox/send";
-import { AgentAction, degradeAction, resolveStage, type AgentActionType } from "@/server/ai/actions";
+import {
+  agentActionSchema,
+  degradeAction,
+  resolveStage,
+  type AgentActionType,
+} from "@/server/ai/actions";
 import { matchesHandoffIntent } from "@/server/ai/handoff";
 import { buildAgentSystemPrompt } from "@/server/ai/prompts";
+import { agendaEnabled } from "@/server/agenda/flag";
+import { bookSlot, offerSlots } from "@/server/agenda/agent";
 
 /**
  * Turno del agente (FR-021..FR-025).
@@ -144,10 +151,11 @@ export async function runAgentTurn(conversationId: string): Promise<void> {
     .where(eq(schema.pipelineStage.organizationId, organizationId))
     .orderBy(asc(schema.pipelineStage.position));
 
+  const agenda = agendaEnabled();
   const messages: ChatMessage[] = [
     {
       role: "system",
-      content: buildAgentSystemPrompt({ profile, kb, stages }),
+      content: buildAgentSystemPrompt({ profile, kb, stages, agenda }),
     },
     ...history
       .filter((m) => m.text)
@@ -157,7 +165,7 @@ export async function runAgentTurn(conversationId: string): Promise<void> {
       })),
   ];
 
-  const result = await chatJson(AgentAction, messages);
+  const result = await chatJson(agentActionSchema(agenda), messages);
   if (!result.ok) {
     if (result.error === "not_configured") return;
     // Fallo persistente del proveedor o salida imposible → escalar (FR-022).
@@ -167,6 +175,41 @@ export async function runAgentTurn(conversationId: string): Promise<void> {
   }
 
   let action: AgentActionType = result.data;
+
+  // 015 — Agenda. Un fallo del motor degrada el turno (el agente responde sin
+  // agendar), nunca lo tumba: quedarse callado es peor que no agendar.
+  if (action.action === "offer_slots" || action.action === "book_slot") {
+    if (!agenda) {
+      action = degradeAction(action);
+    } else {
+      try {
+        const turn =
+          action.action === "offer_slots"
+            ? await offerSlots({
+                organizationId,
+                conversationId,
+                intro: action.reply,
+              })
+            : await bookSlot({
+                organizationId,
+                conversationId,
+                startUtc: action.startUtc,
+                confirmation: action.reply,
+              });
+        await deliverReply(conversation, turn.text);
+        if (turn.ok) {
+          publish(organizationId, {
+            type: "conversation.updated",
+            data: { conversation: { id: conversationId } },
+          });
+        }
+        return;
+      } catch (err) {
+        console.error(`[agente] el motor de agenda falló: ${err}`);
+        action = degradeAction(action);
+      }
+    }
+  }
 
   if (action.action === "move_stage") {
     const stage = resolveStage(action.stage, stages);

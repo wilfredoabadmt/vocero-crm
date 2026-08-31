@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { Search, Sparkles, UserRound, X } from "lucide-react";
 import type { ConversationDto } from "@/lib/types";
+import { CHANNEL_LABEL, type Channel } from "@/lib/channels";
+import { ChannelBadge } from "@/components/channel-badge";
 import { matchesQuery } from "@/lib/search";
 import { cn } from "@/lib/utils";
 import { ContactAvatar } from "@/components/avatar";
@@ -55,11 +57,14 @@ function EmptyState({ onSeeded }: { onSeeded: () => void }) {
 
 export function ConversationList({
   conversations: conversationsProp,
+  channels,
   selectedId,
   onSelect,
   onSeeded,
 }: {
   conversations: ConversationDto[] | null;
+  /** Canales encendidos en esta instancia (ADR-001). */
+  channels: readonly Channel[];
   selectedId: string | null;
   onSelect: (id: string) => void;
   onSeeded: () => void;
@@ -67,6 +72,7 @@ export function ConversationList({
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<"all" | "unread">("all");
   const [stage, setStage] = useState<string>("all");
+  const [inbox, setInbox] = useState<Channel | "all">("all");
   const inputRef = useRef<HTMLInputElement>(null);
 
   /**
@@ -94,9 +100,18 @@ export function ConversationList({
         phone: c.contact.phone,
       }) && (stage === "all" || c.stageName === stage)
   );
-  const unreadCount = searched.filter((c) => c.unreadCount > 0).length;
+  // La bandeja elegida es el filtro de AFUERA: "Todas" y "No leídas" cuentan
+  // dentro de ella, no sobre la suma de los dos canales.
+  const inInbox =
+    inbox === "all" ? searched : searched.filter((c) => c.channel === inbox);
+  const inboxCount = (ch: Channel) =>
+    searched.filter((c) => c.channel === ch).length;
+  const unreadCount = inInbox.filter((c) => c.unreadCount > 0).length;
   const visible =
-    filter === "unread" ? searched.filter((c) => c.unreadCount > 0) : searched;
+    filter === "unread" ? inInbox.filter((c) => c.unreadCount > 0) : inInbox;
+  // Con un solo canal encendido no hay bandejas que distinguir: ni marca en
+  // los renglones ni filtro. La pantalla queda exactamente como antes de 014.
+  const multiChannel = channels.length > 1;
 
   // Etapas presentes en la bandeja, en el orden en que llegan del pipeline.
   const stages: string[] = [];
@@ -113,9 +128,41 @@ export function ConversationList({
   return (
     <div className="flex h-full flex-col">
       <header className="border-b px-4 pb-3 pt-4">
-        <div className="mb-3 flex items-baseline gap-2">
+        <div className="mb-3 flex items-center gap-2">
           <h2 className="text-[17px] font-[650] tracking-tight">Bandeja</h2>
           <span className="text-sm text-text-3">{conversations.length}</span>
+          {multiChannel && (
+            <div className="ml-auto flex items-center gap-1">
+              {channels.map((ch) => {
+                const on = inbox === ch;
+                return (
+                  <button
+                    key={ch}
+                    onClick={() => setInbox(on ? "all" : ch)}
+                    aria-pressed={on}
+                    title={
+                      on
+                        ? "Ver todas las bandejas"
+                        : `Ver solo ${CHANNEL_LABEL[ch]}`
+                    }
+                    className={cn(
+                      "flex items-center gap-1 rounded-full border py-[3px] pl-[5px] pr-2 text-[11.5px] font-medium transition-colors",
+                      on
+                        ? "border-brand bg-brand-veil text-foreground"
+                        : "text-text-3 hover:bg-accent",
+                      inbox !== "all" && !on && "opacity-45"
+                    )}
+                  >
+                    <ChannelBadge
+                      channel={ch}
+                      className="h-[13px] w-[13px] rounded-[4px]"
+                    />
+                    {inboxCount(ch)}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
         <div className="flex items-center gap-2 rounded-md border bg-secondary px-3 py-[7px] transition-colors focus-within:border-brand focus-within:bg-background focus-within:ring-[3px] focus-within:ring-brand-soft">
           <Search className="h-4 w-4 shrink-0 text-text-3" strokeWidth={1.7} />
@@ -142,7 +189,7 @@ export function ConversationList({
       <div className="flex items-center gap-1.5 border-b px-4 py-2.5">
         {(
           [
-            { id: "all", label: "Todas", count: searched.length },
+            { id: "all", label: "Todas", count: inInbox.length },
             { id: "unread", label: "No leídas", count: unreadCount },
           ] as const
         ).map((f) => (
@@ -224,13 +271,16 @@ export function ConversationList({
                     </span>
                     <span className="min-w-0 flex-1">
                       <span className="flex items-center justify-between gap-2">
-                        <span
-                          className={cn(
-                            "truncate text-sm",
-                            unread ? "font-[680]" : "font-semibold"
-                          )}
-                        >
-                          {c.contact.name}
+                        <span className="flex min-w-0 items-center gap-1.5">
+                          {multiChannel && <ChannelBadge channel={c.channel} />}
+                          <span
+                            className={cn(
+                              "truncate text-sm",
+                              unread ? "font-[680]" : "font-semibold"
+                            )}
+                          >
+                            {c.contact.name}
+                          </span>
                         </span>
                         <span
                           className={cn(

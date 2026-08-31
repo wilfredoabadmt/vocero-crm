@@ -6,6 +6,7 @@ import { normalizeThemePreference, THEME_COOKIE } from "@/lib/theme";
 import { getBranding } from "@/server/branding";
 import { AppShell } from "@/components/app-shell";
 import { resolveBuildCommit } from "@/lib/version";
+import { agendaEnabled } from "@/server/agenda/flag";
 
 export default async function AppLayout({
   children,
@@ -28,6 +29,10 @@ export default async function AppLayout({
       theme={theme}
       // Se resuelve aquí, en el servidor: el cliente no ve `SOURCE_COMMIT`.
       commit={resolveBuildCommit()}
+      // Qué módulos opcionales existen se decide en el servidor y baja por
+      // prop, igual que los canales de la Bandeja. El nav es un componente de
+      // cliente: no puede —ni debe— leer variables de entorno.
+      agenda={agendaEnabled()}
     >
       {children}
     </AppShell>

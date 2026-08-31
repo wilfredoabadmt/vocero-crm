@@ -15,6 +15,24 @@ export const dynamic = "force-dynamic";
 
 type Params = { params: Promise<{ path: string[] }> };
 
+/** 016 — Catálogo cerrado de Meta para `business_messaging` (mismo que el real). */
+const CAPI_EVENT_NAMES = new Set([
+  "Purchase",
+  "LeadSubmitted",
+  "QualifiedLead",
+  "InitiateCheckout",
+  "AddToCart",
+  "ViewContent",
+  "OrderCreated",
+  "OrderShipped",
+  "OrderDelivered",
+  "OrderCanceled",
+  "OrderReturned",
+  "CartAbandoned",
+  "RatingProvided",
+  "ReviewProvided",
+]);
+
 function bearerToken(req: Request): string {
   const h = req.headers.get("authorization") ?? "";
   return h.startsWith("Bearer ") ? h.slice(7) : "";
@@ -107,6 +125,70 @@ export async function POST(req: Request, ctx: Params) {
   }
 
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
+
+  // 016 — POST {datasetId}/events: Conversions API. Imita las tres cosas que
+  // de verdad importan del endpoint real: el catálogo cerrado de nombres, la
+  // exigencia del ctwa_clid, y —sobre todo— que Meta puede responder 200
+  // DESCARTANDO el evento. Los datasets terminados en "-fail" reproducen eso
+  // último, que es el modo de fallo que nadie ve venir.
+  if (path.length === 2 && path[1] === "events") {
+    const state = getWaMockState();
+    const events = Array.isArray(body.data)
+      ? (body.data as Record<string, unknown>[])
+      : [];
+    const event = events[0];
+    const eventName = String(event?.event_name ?? "");
+    const userData = (event?.user_data ?? {}) as Record<string, unknown>;
+    const ctwaClid = userData.ctwa_clid ? String(userData.ctwa_clid) : null;
+
+    if (!CAPI_EVENT_NAMES.has(eventName)) {
+      return Response.json(
+        {
+          error: {
+            message: `(#100) Invalid parameter: event_name ${eventName || "(vacío)"}`,
+            type: "GraphMethodException",
+            code: 100,
+            fbtrace_id: "mock-capi-badname",
+          },
+        },
+        { status: 400 }
+      );
+    }
+    if (!ctwaClid) {
+      return Response.json(
+        {
+          error: {
+            message: "Messaging Event Invalid Ctwa Clid",
+            type: "GraphMethodException",
+            code: 100,
+            error_subcode: 2804087,
+            fbtrace_id: "mock-capi-noclid",
+          },
+        },
+        { status: 400 }
+      );
+    }
+
+    const datasetId = path[0]!;
+    state.capiEvents.push({
+      n: nextN(),
+      datasetId,
+      eventName,
+      ctwaClid,
+      customData:
+        (event?.custom_data as Record<string, unknown> | undefined) ?? null,
+      body,
+      at: new Date().toISOString(),
+    });
+
+    // El 200 mentiroso: recibido por HTTP, descartado por Meta.
+    const received = datasetId.endsWith("-fail") ? 0 : 1;
+    return Response.json({
+      events_received: received,
+      messages: [],
+      fbtrace_id: `mock-capi-${state.capiEvents.length}`,
+    });
+  }
 
   // POST {phoneNumberId}/messages con status:"read" → typing/leído:
   // NO es un mensaje saliente — no contamina el outbox.

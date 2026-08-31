@@ -1,4 +1,11 @@
 import { SettingsNav } from "@/components/settings/settings-nav";
+import { agendaEnabled } from "@/server/agenda/flag";
+import { atribucionEnabled } from "@/server/attribution/flag";
+
+// La bandera se lee en cada petición: si esto se resolviera al construir, la
+// imagen quedaría con la agenda apagada para siempre y encenderla en la
+// plataforma no haría nada.
+export const dynamic = "force-dynamic";
 
 export default function SettingsLayout({
   children,
@@ -10,7 +17,7 @@ export default function SettingsLayout({
       </header>
       {/* En móvil las pestañas van arriba (en fila), no como columna lateral. */}
       <div className="flex min-h-0 flex-1 flex-col sm:flex-row">
-        <SettingsNav />
+        <SettingsNav agenda={agendaEnabled()} atribucion={atribucionEnabled()} />
         <div className="min-w-0 flex-1 overflow-y-auto p-4 sm:p-6">{children}</div>
       </div>
     </div>

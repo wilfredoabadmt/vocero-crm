@@ -99,6 +99,49 @@ está en [`tests/e2e/us-bot-api.md`](tests/e2e/us-bot-api.md).
 
 Agente de referencia: [nea-agent](https://github.com/kevinrivm/nea-agent), MIT.
 
+### 📅 Agenda con huecos reales (opcional, apagada por defecto)
+
+Enciéndela con `AGENDA=on` y el CRM sabe cuándo estás libre: defines tu horario
+en Ajustes → Agenda y tu agente ofrece huecos concretos, reserva el que el
+cliente elige y lo deja registrado junto a su conversación. Dos garantías que
+no se negocian: **solo se reserva un horario que se ofreció** (nada de que el
+modelo invente un martes a las 10) y **nunca se confirma una cita que no se
+creó** — si el hueco se ocupó a media conversación, la respuesta trae
+alternativas frescas en vez de una promesa falsa.
+
+Cómo se entrega la reunión lo eliges tú, con un **conector**:
+
+| Conector | Qué hace | Necesita |
+|---|---|---|
+| **Enlace fijo** (default) | Reparte tu sala de siempre | Nada |
+| **Zoom** | Una reunión por cita; mover la mueve, cancelar la borra | Tu app Server-to-Server |
+| **Google Calendar + Meet** | Un evento en tu calendario con su enlace de Meet | Tu app de Google Cloud |
+
+¿Usas otra cosa? El contrato son cuatro operaciones y está publicado: escribe
+tu conector en tu fork siguiendo
+[`docs/agenda-conectores.md`](docs/agenda-conectores.md). Y si tu proveedor se
+cae, la cita **se agenda igual** con el enlace pendiente de reintentar: un
+tercero caído no te cuesta la conversión.
+
+### 📈 Conversiones de anuncios (opcional, apagada por defecto)
+
+Si anuncias con **Click-to-WhatsApp**, Meta sabe qué conversaciones empezaron
+desde un anuncio, pero no cuáles sirvieron: sin nadie que se lo diga, optimiza
+hacia el público más barato de hacer escribir, que rara vez es el que compra.
+
+Enciéndela con `ATRIBUCION=on`, pega tu dataset en Ajustes → Anuncios (el token
+lo reusa de tu conexión de WhatsApp) y di qué etapa de TU pipeline significa
+"lead calificado". A partir de ahí el CRM le reporta a Meta el lead calificado y
+la venta cerrada —con su importe— por la **Conversions API**, y una tabla de
+actividad te dice qué se envió, con qué acuse y, cuando no salió, por qué.
+
+No se le pide nada al usuario que el CRM ya sepa: la venta cuelga de la etapa
+ganada que ya tienes, y todo se dispara desde la misma puerta que mueve leads,
+así que reporta igual si arrastras la tarjeta tú, el agente incluido o tu propio
+bot. Si Meta se cae, el lead se mueve igual: una conversión jamás vale un
+movimiento bloqueado. Los gotchas de Meta que cuesta descubrir solo están en
+[`docs/atribucion-capi.md`](docs/atribucion-capi.md).
+
 ### 📄 Plantillas · 👥 Multi-usuario · 🔐 Self-hosted
 
 Plantillas con varias variables `{{1}}…{{n}}` y aprobación de Meta
@@ -347,18 +390,31 @@ La versión vive en `package.json` y se sube en el PR que publica el cambio.
 - Analytics de conversación y plantillas.
 - Broadcast con opt-in verificado.
 
-### Fuera de alcance a propósito
+### Antes fuera de alcance, ahora detrás de una bandera
 
-**Motor de agendamiento** (horarios de atención, huecos, reservas). Son unas
-mil líneas, dos tablas y una dependencia de fechas dentro de un proyecto cuyo
-argumento es ser ligero; y el estado de qué huecos se ofrecieron pertenece a la
-conversación, o sea al agente, no al CRM. Si tu bot agenda, el contrato que
-esperan `/api/bot/availability` y `/api/bot/bookings` está documentado en el
-[issue #8](https://github.com/kevinrivm/vocero-crm/issues/8) para que lo
-implementes donde te convenga.
+**El motor de agendamiento ya está en el core**, apagado por defecto. Aquí
+decía que quedaba fuera a propósito, con dos razones. Las dos eran buenas y
+las dos cambiaron; se dejan escritas porque el porqué importa más que la
+conclusión:
 
-Si viste algún video donde digo que Vocero trae el motor de agendamiento: me
-adelanté, y esta es la aclaración.
+- *"Son mil líneas y una dependencia de fechas en un proyecto cuyo argumento es
+  ser ligero."* — Cierto, y por eso vive detrás de `AGENDA`: una instancia que
+  no agenda no ve pantallas, ni rutas, ni una instrucción de agendar en el
+  prompt de su agente, ni se le pide una sola credencial. El peso lo paga quien
+  la enciende. Lo de la dependencia de fechas ya no aplica: el motor no agregó
+  ninguna (la aritmética de zonas usa `Intl` de la plataforma).
+- *"El estado de qué huecos se ofrecieron pertenece a la conversación, o sea al
+  agente, no al CRM."* — Pertenecía al agente mientras el CRM no ofreciera la
+  garantía. Al ofrecerla, es el CRM quien tiene que poder probarla: con la
+  memoria del lado del cliente, cualquier cerebro conectado por `/api/bot/*`
+  podría reservar un horario que jamás se ofreció y el CRM lo aceptaría. Ahora
+  la regla es inviolable por construcción y vale igual para el agente incluido,
+  para tu bot y para el que venga.
+
+Lo que sigue fuera, y a propósito: **leer calendarios externos** para descontar
+disponibilidad. El motor calcula con lo suyo y los compromisos de fuera se
+reflejan con bloqueos manuales; meter al proveedor en ese camino acoplaría su
+latencia y sus caídas a la pantalla que más se usa.
 
 ## Stack
 

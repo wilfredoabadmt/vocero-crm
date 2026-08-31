@@ -9,7 +9,12 @@ export const dynamic = "force-dynamic";
 
 /**
  * Contexto conversacional para un cerebro externo (solo lectura).
- * GET /api/bot/context?waIdentity=... | ?conversationId=...
+ * GET /api/bot/context?identity=... | ?waIdentity=... | ?conversationId=...
+ *
+ * `identity` es el nombre neutro (hay contactos que no son de WhatsApp).
+ * `waIdentity` se mantiene aceptado y presente en la respuesta porque es
+ * contrato publicado: hay cerebros externos en produccion que dependen de el.
+ * No tiene fecha de retiro.
  *
  * NO devuelve el historial de mensajes: el bot lleva su propia memoria de la
  * conversación. Lo que aquí sale es lo que solo el CRM sabe — quién es la
@@ -25,10 +30,11 @@ export async function GET(req: Request) {
   }
 
   const url = new URL(req.url);
-  const waIdentity = url.searchParams.get("waIdentity");
+  const waIdentity =
+    url.searchParams.get("identity") ?? url.searchParams.get("waIdentity");
   const conversationId = url.searchParams.get("conversationId");
   if (!waIdentity && !conversationId) {
-    return apiError(422, "invalid", "Falta waIdentity o conversationId");
+    return apiError(422, "invalid", "Falta identity (o waIdentity) o conversationId");
   }
 
   const db = getDb();
@@ -107,7 +113,11 @@ export async function GET(req: Request) {
     contact: {
       id: contact.id,
       name: contact.name,
+      /** Nombre neutro (014). Preferir este en clientes nuevos. */
+      identity: contact.waIdentity,
+      /** Alias heredado: sigue aqui para no romper bots ya desplegados. */
       waIdentity: contact.waIdentity,
+      channel: contact.channel,
       phone: contact.phone,
       ficha: serializeFicha(contact),
     },

@@ -33,6 +33,9 @@ externas: el trabajo en segundo plano (agente, Laboratorio) es in-process.
 | La ingesta/envío de mensajes | `src/server/inbox/` (ingest idempotente, send con guard de sandbox, ventana 24h) |
 | Cómo se identifica a un contacto | `src/server/inbox/identity.ts` (teléfono normalizado o `bsuid:<id>`) |
 | Conectar TU propio bot en vez del agente | `src/app/api/bot/*` + `src/server/bot/auth.ts` (X-API-Key) |
+| La agenda (horarios, huecos, citas) | `src/server/agenda/` — detrás de la bandera `AGENDA` (`flag.ts`) |
+| Cómo se entrega la reunión (Zoom, Meet…) | `src/server/agenda/connectors/` + catálogo en `src/lib/agenda-connectors.ts` · guía: [docs/agenda-conectores.md](docs/agenda-conectores.md) |
+| La atribución de anuncios y el reporte a Meta | `src/server/attribution/` — detrás de la bandera `ATRIBUCION` (`flag.ts`) + `src/lib/meta/capi.ts` · guía: [docs/atribucion-capi.md](docs/atribucion-capi.md) |
 | UI | `src/components/` + `src/app/(app)/` |
 
 Los mocks del entorno de pruebas viven en `src/app/api/dev/` (wa-mock +
@@ -55,10 +58,14 @@ funciona igual.
 
 Ver [.specify/memory/constitution.md](.specify/memory/constitution.md).
 
-- **Soberanía (II, endurecida)**: dependencias de runtime SOLO WhatsApp Cloud
-  API + proveedor LLM OpenRouter-compatible opcional. PROHIBIDO en v1
-  introducir S3/R2, email, Stripe, Google u otros servicios externos. Auth y
-  BD self-hosted.
+- **Soberanía (II, endurecida — 1.4.0)**: el NÚCLEO depende solo de WhatsApp
+  Cloud API + proveedor LLM OpenRouter-compatible opcional; prohibido meterle
+  S3/R2, email, billing u otros terceros. Un servicio de terceros solo entra
+  como **conector opcional**: apagado por defecto tras bandera (patrón
+  ADR-001), aislado tras adaptador con contrato público, con camino sin
+  dependencia externa y degradación definida (su fallo jamás bloquea la
+  operación core), credenciales del negocio cifradas, y CI que lo prueba
+  apagado y encendido. Auth y BD self-hosted.
 - **Seguridad (I)**: secretos cifrados en reposo (AES-256-GCM, `lib/crypto`);
   jamás al cliente ni a logs. El token de WhatsApp solo muestra sus últimos 4.
 - **Multi-tenancy (III)**: `organization_id` NOT NULL en toda tabla de dominio;
@@ -66,7 +73,13 @@ Ver [.specify/memory/constitution.md](.specify/memory/constitution.md).
 - **Idempotencia (IV)**: webhooks dedup por `wa_message_id` UNIQUE; estados
   monotónicos; seeds y migraciones re-ejecutables.
 - **Sandbox del Laboratorio**: las conversaciones `is_test` JAMÁS tocan la API
-  real — el sender lanza excepción (no lo "arregles": es un guardrail).
+  real — el sender lanza excepción (no lo "arregles": es un guardrail). Lo
+  mismo vale para la agenda: una cita de prueba nunca llega a un conector.
+- **Módulos opcionales (015, 016)**: lo que no usa toda instancia va detrás de una
+  bandera de despliegue, apagado por defecto, con su superficie en 404 y la
+  migración aplicada igual. Nunca en una rama aparte
+  ([ADR-001](docs/adr-001-canales-opcionales.md),
+  [ADR-002](docs/adr-002-conectores-de-agenda.md)).
 
 ## Variables de entorno
 

@@ -1,4 +1,5 @@
 import { and, eq, or } from "drizzle-orm";
+import type { Channel } from "@/lib/channels";
 import { getDb, schema } from "@/lib/db";
 import { newId } from "@/lib/db/ids";
 import { normalizeMx } from "@/lib/meta/client";
@@ -15,10 +16,18 @@ import type { WebhookMessage, WebhookValue } from "@/server/inbox/webhook";
  */
 
 export const BSUID_PREFIX = "bsuid:";
+/** 014: identidad de Instagram, analoga al BSUID de WhatsApp. */
+export const IG_PREFIX = "ig:";
+
+// El tipo vive en lib/ porque la interfaz tambien lo necesita; se reexporta
+// aqui para no tocar a quien ya lo importaba de este modulo.
+export type { Channel };
 
 export type ResolvedIdentity = {
   /** Llave estable de resolución: teléfono normalizado o `bsuid:<id>`. */
   identity: string;
+  /** 014: canal del contacto. Ausente = whatsapp (compatibilidad). */
+  channel?: Channel;
   phone: string | null;
   waUserId: string | null;
   profileName: string | null;
@@ -76,6 +85,70 @@ export async function getOrCreateContactByIdentity(
 ) {
   const db = getDb();
 
+  const channel: Channel = resolved.channel ?? "whatsapp";
+
+  // 014: Instagram no comparte espacio de identidades con WhatsApp. La
+  // reconciliacion telefono<->BSUID es exclusiva de WhatsApp, asi que en
+  // Instagram la busqueda es directa por identidad.
+  if (channel === "instagram") {
+    const found = await db
+      .select()
+      .from(schema.contact)
+      .where(
+        and(
+          eq(schema.contact.organizationId, organizationId),
+          eq(schema.contact.channel, "instagram"),
+          eq(schema.contact.waIdentity, resolved.identity)
+        )
+      )
+      .limit(1);
+    const existingIg = found[0];
+    if (existingIg) {
+      if (existingIg.archivedAt) {
+        await db
+          .update(schema.contact)
+          .set({ archivedAt: null, updatedAt: new Date() })
+          .where(eq(schema.contact.id, existingIg.id));
+        existingIg.archivedAt = null;
+      }
+      return { contact: existingIg, isNew: false };
+    }
+    const createdIg = await db
+      .insert(schema.contact)
+      .values({
+        id: newId("contact"),
+        organizationId,
+        channel: "instagram",
+        waIdentity: resolved.identity,
+        phone: null,
+        waUserId: null,
+        name: resolved.profileName?.trim() || "Contacto de Instagram",
+      })
+      .onConflictDoNothing({
+        target: [
+          schema.contact.organizationId,
+          schema.contact.channel,
+          schema.contact.waIdentity,
+        ],
+      })
+      .returning();
+    if (createdIg[0]) return { contact: createdIg[0], isNew: true };
+    const racedIg = await db
+      .select()
+      .from(schema.contact)
+      .where(
+        and(
+          eq(schema.contact.organizationId, organizationId),
+          eq(schema.contact.channel, "instagram"),
+          eq(schema.contact.waIdentity, resolved.identity)
+        )
+      )
+      .limit(1);
+    const contactIg = racedIg[0];
+    if (!contactIg) throw new Error("contacto no encontrado tras upsert");
+    return { contact: contactIg, isNew: false };
+  }
+
   const matchers = [eq(schema.contact.waIdentity, resolved.identity)];
   if (resolved.waUserId) {
     matchers.push(eq(schema.contact.waUserId, resolved.waUserId));
@@ -90,7 +163,13 @@ export async function getOrCreateContactByIdentity(
   const rows = await db
     .select()
     .from(schema.contact)
-    .where(and(eq(schema.contact.organizationId, organizationId), or(...matchers)))
+    .where(
+      and(
+        eq(schema.contact.organizationId, organizationId),
+        eq(schema.contact.channel, "whatsapp"),
+        or(...matchers)
+      )
+    )
     .orderBy(schema.contact.createdAt)
     .limit(1);
 
@@ -123,7 +202,11 @@ export async function getOrCreateContactByIdentity(
       name: resolved.profileName?.trim() || displayFallback(resolved),
     })
     .onConflictDoNothing({
-      target: [schema.contact.organizationId, schema.contact.waIdentity],
+      target: [
+        schema.contact.organizationId,
+        schema.contact.channel,
+        schema.contact.waIdentity,
+      ],
     })
     .returning();
   if (inserted[0]) return { contact: inserted[0], isNew: true };

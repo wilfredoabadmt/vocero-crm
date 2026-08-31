@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
+  CalendarDays,
   FlaskConical,
   Inbox,
   Kanban,
@@ -21,13 +22,27 @@ import { useEvents } from "@/components/use-events";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { APP_VERSION, BUILD_COMMIT, versionLabel } from "@/lib/version";
 
-const NAV = [
+type NavItem = {
+  href: string;
+  label: string;
+  icon: typeof Inbox;
+  badge?: boolean;
+};
+
+const NAV: NavItem[] = [
   { href: "/inbox", label: "Bandeja", icon: Inbox, badge: true },
   { href: "/pipeline", label: "Pipeline", icon: Kanban },
   { href: "/contacts", label: "Contactos", icon: Users },
   { href: "/agent", label: "Agente", icon: Sparkles },
   { href: "/lab", label: "Laboratorio", icon: FlaskConical },
-] as const;
+];
+
+/** 015 — "Citas" solo existe si esta instancia encendió la agenda. */
+const AGENDA_ITEM: NavItem = {
+  href: "/bookings",
+  label: "Citas",
+  icon: CalendarDays,
+};
 
 export function AppNav({
   branding,
@@ -35,6 +50,7 @@ export function AppNav({
   role,
   theme,
   commit,
+  agenda = false,
   open = false,
   onClose,
 }: {
@@ -47,6 +63,12 @@ export function AppNav({
    * plataforma cuando quien construyó no lo pasó como build-arg.
    */
   commit?: string;
+  /**
+   * 015 — ¿hay agenda en esta instancia? Viene del servidor por prop y no se
+   * deduce de los datos: una instancia con la agenda encendida pero sin citas
+   * todavía debe mostrar igual su pantalla.
+   */
+  agenda?: boolean;
   /** Solo aplica por debajo de `lg`: en escritorio el lateral es fijo. */
   open?: boolean;
   onClose?: () => void;
@@ -74,6 +96,11 @@ export function AppNav({
   });
 
   const sha = commit || BUILD_COMMIT;
+  // Citas va después de Pipeline: es el paso siguiente de un trato, no una
+  // sección aparte.
+  const items = agenda
+    ? [...NAV.slice(0, 2), AGENDA_ITEM, ...NAV.slice(2)]
+    : NAV;
 
   return (
     <aside
@@ -114,7 +141,7 @@ export function AppNav({
       </div>
 
       <nav className="flex flex-col gap-0.5">
-        {NAV.map((item) => {
+        {items.map((item) => {
           const active =
             pathname === item.href || pathname.startsWith(`${item.href}/`);
           return (
@@ -133,7 +160,7 @@ export function AppNav({
                 strokeWidth={1.7}
               />
               <span className="flex-1">{item.label}</span>
-              {"badge" in item && item.badge && unread > 0 && (
+              {item.badge && unread > 0 && (
                 <span
                   className={cn(
                     "flex h-[18px] min-w-[18px] items-center justify-center rounded-full px-1.5 text-[10.5px] font-semibold",
